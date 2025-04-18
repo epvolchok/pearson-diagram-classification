@@ -20,6 +20,8 @@ input_imags = './images/'
 img_path = [input_imags + f for f in os.listdir(input_imags) if f[-3:] == 'png']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+print(device)
+
 transform = transforms.Compose([
     transforms.Resize((224)),
     transforms.ToTensor(),
@@ -53,7 +55,7 @@ features_scaled = StandardScaler().fit_transform(features)
 
 # reducing components
 
-model_pca = PCA(n_components=25, svd_solver='randomized', random_state=42)
+model_pca = PCA(n_components=0.95, random_state=42)
 features_PCA = model_pca.fit_transform(features_scaled)
 
 model_umap = umap.UMAP(n_components=10, min_dist=0.1, metric='cosine', random_state=42)
