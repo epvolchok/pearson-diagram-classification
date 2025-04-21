@@ -37,39 +37,13 @@ print("Средняя косинусная дистанция между эмб�
 
 features_processed = obj.preproccess('PCA+UMAP10D')
 
-# 🔎 Кластеризация HDBSCAN
-clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean')
-labels = clusterer.fit_predict(features_processed)
-
-# ℹ️ Вывод числа кластеров
-n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+labels, n_clusters = obj.clustering_HDBSCAN(features_processed)
 print(f"Найдено кластеров: {n_clusters}")
 
-df = obj.create_database(labels)
-obj.sort_files(df)
+df = obj.database
+obj.sort_files()
 
 """
-#features_scaled = StandardScaler().fit_transform(features)
-model_pca = PCA(n_components=0.95, svd_solver='full')
-features_PCA = model_pca.fit_transform(features)
-print(features_PCA.shape)
-
-
-model_umap = umap.UMAP(n_components=10, min_dist=0.1, metric='cosine')
-features_umap = model_umap.fit_transform(features_PCA)
-
-
-reducer = umap.UMAP(n_components=2,  metric='cosine')
-umap_2d = reducer.fit_transform(features)
-
-# 🔎 Кластеризация HDBSCAN
-clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean')
-labels = clusterer.fit_predict(umap_2d)
-
-# ℹ️ Вывод числа кластеров
-n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-print(f"Найдено кластеров: {n_clusters}")
-
 # 🎨 Визуализация
 plt.figure(figsize=(10, 8))
 palette = plt.get_cmap("tab10")
@@ -85,15 +59,3 @@ plt.xlabel("UMAP-1")
 plt.ylabel("UMAP-2")
 plt.show()
 """
-"""
-features_scaled = StandardScaler().fit_transform(features)
-model_pca = PCA(n_components=0.95, random_state=42)
-features_PCA = model_pca.fit_transform(features_scaled)
-
-model_umap = umap.UMAP(n_components=10, min_dist=0.1, metric='cosine', random_state=42)
-features_umap = model_umap.fit_transform(features_PCA)
-
-# clustering
-model_hdbscan = hdbscan.HDBSCAN(min_cluster_size=10, min_samples=5, metric='euclidean', cluster_selection_method='eom')
-#labels = model_hdbscan.fit_predict(features_umap)
-#print(labels)"""
