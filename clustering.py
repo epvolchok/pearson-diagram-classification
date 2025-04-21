@@ -42,20 +42,3 @@ print(f"Найдено кластеров: {n_clusters}")
 
 df = obj.database
 obj.sort_files()
-
-"""
-# 🎨 Визуализация
-plt.figure(figsize=(10, 8))
-palette = plt.get_cmap("tab10")
-
-for label in set(labels):
-    mask = labels == label
-    color = 'gray' if label == -1 else palette(label % 10)
-    plt.scatter(umap_2d[mask, 0], umap_2d[mask, 1], s=10, color=color, label=f'Кластер {label}' if label != -1 else 'Шум')
-
-plt.legend()
-plt.title("UMAP + HDBSCAN: визуализация кластеров")
-plt.xlabel("UMAP-1")
-plt.ylabel("UMAP-2")
-plt.show()
-"""

@@ -27,8 +27,6 @@ class Clustering:
         self.names = [f for f in os.listdir(path) if Clustering.check_extension(f)]
         self.img_path = [path]*len(self.names)
         self.img_path = [p + self.names[i] for i, p in enumerate(self.img_path)]
-        print(f'names {self.names[:10]} \n len {len(self.names)}')
-        print(f'paths {self.img_path[:10]} \n len {len(self.img_path)}')
 
         self.num_clusters = 0
         self.labels = []
@@ -155,7 +153,7 @@ class Clustering:
             'label': self.labels,
             'oldpath': self.img_path
         })
-        print(df.head())
+        #print(df.head())
         return df
     
 
@@ -173,7 +171,7 @@ class Clustering:
         print(self.database.head())
 
 
-    def copy_file(self):
+    def copy_files(self):
         for index, row in self.database.iterrows():
             #print('cp '+row['oldpath']+' '+row['path'])
             os.system('cp '+row['oldpath']+' '+row['path'])
@@ -181,5 +179,23 @@ class Clustering:
     def sort_files(self):
         self.create_dirs()
         self.create_newpath()
-        self.copy_file()
+        self.copy_files()
+
+    def visualize(self):
+        features_processed = self.preproccess('PCA+UMAP10D')
+        labels, n_clusters = self.clustering_HDBSCAN(features_processed)
+
+        plt.figure(figsize=(10, 8))
+        palette = plt.get_cmap('tab10')
+
+        for label in set(labels):
+            mask = labels == label
+            color = 'gray' if label == -1 else palette(label % 10)
+            plt.scatter(features_processed[mask, 0], features_processed[mask, 1], s=10, color=color, label=f'Cluster {label}' if label != -1 else 'Noise')
+
+        plt.legend()
+        plt.title('UMAP + HDBSCAN: clustering visualization')
+        plt.xlabel('UMAP-1 component')
+        plt.ylabel('UMAP-2  component')
+        plt.show()
         

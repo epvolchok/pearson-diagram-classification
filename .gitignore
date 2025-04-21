@@ -5,6 +5,6 @@ __pycache__/
 *.npy
 
 # image data
-/processed
+processed/
 images/
-images2/
+data/
