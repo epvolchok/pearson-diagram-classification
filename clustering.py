@@ -19,7 +19,7 @@ input_imags = './images/'
 
 obj = Clustering(input_imags)
 
-#features = obj.feature_extraction()
+#features = obj.features
 #obj.write_features()
 
 features = obj.read_features()
@@ -32,13 +32,17 @@ print(f'std {np.std(nonzero)}')
 distances = pairwise_distances(features, metric='cosine')
 mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
 
-print("Средняя косинусная дистанция между эмбеддингами:", mean_dist)
+print('Average cosine distance between embeddings:', mean_dist)
 
 
-features_processed = obj.preproccess('PCA+UMAP10D')
+features_processed = obj.preproccessing('PCA+UMAP10D')
 
 labels, n_clusters = obj.clustering_HDBSCAN(features_processed)
-print(f"Найдено кластеров: {n_clusters}")
+print(f'Found {n_clusters} clusters (10D)')
 
 df = obj.database
 obj.sort_files()
+obj.save_database()
+
+obj.read_database()
+obj.visualize() 

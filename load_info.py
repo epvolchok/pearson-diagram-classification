@@ -1,6 +1,6 @@
 from  soloinfo import *
 
-cat = solo_info('./SOLO_info_rswf.txt')
+cat = solo_info('./data/SOLO_info_rswf.txt')
 cat.read()
 one_day = cat.get('2020-11-25')
 one_day = cat.get('solo_L2_rpw-tds-surv-rswf-e_20200618_V05',key='dataset_name')
