@@ -51,8 +51,8 @@ class Clustering:
         self.models_dict = {
             'pca': PCA(n_components=0.95, svd_solver='full'),
             'scaler': StandardScaler(),
-            'umap10d': umap.UMAP(n_components=10, min_dist=0.3, metric='cosine'),
-            'umap2d': umap.UMAP(n_components=2, min_dist=0.3, metric='cosine')
+            'umap10d': umap.UMAP(n_components=20, min_dist=0.1, metric='cosine'),
+            'umap2d': umap.UMAP(n_components=2, min_dist=0.1, metric='cosine')
         }
 
     @staticmethod
@@ -91,7 +91,7 @@ class Clustering:
             dataset_name = re.search(name_pattern, path).group(0)
             if dataset_name in mixed_freq.values:
                 self.names.remove(dataset_name+'.png')
-                self.img_path.remove('./images/'+dataset_name+'.png')
+                self.img_path.remove('./images_reg_b/'+dataset_name+'.png')
 
 
 
@@ -154,13 +154,13 @@ class Clustering:
     def write_features(self, path='./data/'):
         if self.features.size:
             try:
-                np.save(path + 'features.npy', self.features)
+                np.save(path + 'features_b.npy', self.features)
             except:
                 print('Error during writing data')
         else:
             print('Extract features first')
     
-    def read_features(self, path='./data/features.npy'):
+    def read_features(self, path='./data/features_b.npy'):
         try:
             data = np.load(path)
             self.features = data

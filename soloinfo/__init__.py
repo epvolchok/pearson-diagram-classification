@@ -56,7 +56,11 @@ class solo_info(object):
             if i == 0:
                 axes[field]=(ax)
                 # Основная ось
-                ax.plot(self.data['date'], self.data[field], label=field, color=color)
+                label0 = self.data[self.data['label'].isin([0])]
+                label1 = self.data[self.data['label'].isin([1])]
+                ax.plot(label0['date'], label0[field], label=field, color='blue', ls='',marker='.', zorder=1)
+                ax.plot(label1['date'], label1[field], label=field, color='purple', ls='',marker='.', zorder=2)
+
                 ax.set_ylabel(field, color=color)
                 ax.tick_params(axis='y', labelcolor=color)
             else:

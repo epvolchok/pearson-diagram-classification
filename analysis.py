@@ -31,13 +31,14 @@ print(df_reg_data['label'].value_counts())
 
 df_reg_data['SAMPLING_RATE[kHz]'] = df_reg_data['SAMPLING_RATE[Hz]'].floordiv(1000)
 df_reg_data.drop('SAMPLING_RATE[Hz]',  axis=1, inplace=True)
+df_reg_data['year'] = df_reg_data['date'].dt.year
 
 path = './processed/label_'
-labels = [0, 2, 1]
-xs = ['dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']
-colors = ['blue', 'orange', 'green']
+labels = [0, 1, 2, 3]
+xs = ['dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'year']
+colors = ['blue', 'orange', 'green', 'red']
 fig = plt.figure(figsize=(20, 12))
-gs = gridspec.GridSpec(3, 4)
+gs = gridspec.GridSpec(4, 5)
 for iy in range(len(labels)):
     for ix in range(len(xs)):
         ax = plt.subplot(gs[iy, ix])
@@ -62,35 +63,6 @@ for iy in range(len(labels)):
     ax2.axis("off")
     ax2.set_title(r'\textbf{label '+str(labels[iy])+'}', rotation=0, color=colors[iy])
     plt.tight_layout()
-
-
-"""
-fig = plt.figure(figsize=(15, 4))
-gs = gridspec.GridSpec(1, 5)
-for iy in range(5):
-    ax = plt.subplot(gs[0, iy])
-    df = df_r[df_r['label'] == labels[iy]]
-    sns.histplot(data=df, x=xs[1], ax=ax)
-    ax.set_title(labels[iy])
-    ax.set_xlabel(xs[1]) """
-
-""" fig = plt.figure(figsize=(15, 4))
-gs = gridspec.GridSpec(1, 5)
-for iy in range(5):
-    ax = plt.subplot(gs[0, iy])
-    df = df_r[df_r['label'] == labels[iy]]
-    sns.histplot(data=df, x=xs[2], ax=ax)
-    ax.set_title(labels[iy])
-    ax.set_xlabel(xs[2]) """
-
-""" fig = plt.figure(figsize=(15, 4))
-gs = gridspec.GridSpec(1, 5)
-for iy in range(5):
-    ax = plt.subplot(gs[0, iy])
-    df = df_r[df_r['label'] == labels[iy]]
-    sns.histplot(data=df, x=xs[3], ax=ax)
-    ax.set_title(labels[iy])
-    ax.set_xlabel(xs[3]) """
 
 plt.tight_layout()
 plt.show()
