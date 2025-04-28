@@ -9,6 +9,7 @@ processed/
 images_reg_colors/
 images_reg_b/
 images_reg_wb/
-processed_b_default/
 processed_wb/
+processed_b_4_clusters/
+processed_b_3_clusters/
 data/
