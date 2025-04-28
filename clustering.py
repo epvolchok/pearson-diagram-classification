@@ -14,10 +14,21 @@ import hdbscan
 from sklearn.metrics import pairwise_distances
 from libcluster import Clustering
 from libfeatures import ResNetFeatures
+from libservice import ServiceFuncs
 
 input_imags = './images_reg_b/'
 
-obj = ResNetFeatures(input_imags)
+obj = ResNetFeatures(input_imags, file='./data/pearson_diagram_data') #flag='extract'
+print('Original features')
+obj.info_on_features(vis=True, title='Original features')
+obj.database = obj.filtering_nonzerocolumns()
+print('Nonzero columns')
+obj.info_on_features(vis=True, title='Nonzero columns')
+obj.database = obj.filtering_by_variance()
+print('Filtration by variance')
+obj.info_on_features(vis=True, title='Filtration by variance')
+ServiceFuncs.save_database(obj.database, file_name='filtered_pearson_diagram_data')
+
 """ obj = Clustering(input_imags)
 
 #features = obj.features
