@@ -4,6 +4,9 @@ import os
 from PIL import Image
 import re
 import datetime
+import subprocess
+
+
 
 class ServiceFuncs:
 
@@ -33,6 +36,7 @@ class ServiceFuncs:
         date = datetime.date(int(search.group(2)), int(search.group(3)), int(search.group(4)))
         return observation_type, date
     
+    @staticmethod
     def save_database(df, **kwargs):
         dir_name = './data/'
         try:
@@ -51,6 +55,7 @@ class ServiceFuncs:
         except:
             print('Can not save the datbase')
 
+    @staticmethod
     def read_database(**kwargs):
         
         kind = kwargs.get('kind', 'pickle')
@@ -70,3 +75,25 @@ class ServiceFuncs:
         except:
             print('Error during reading a database')
             return None
+        
+    @staticmethod
+    def preparing_folder(dir_name, clear):
+        
+        if os.path.exists(dir_name):
+            if clear:
+                try:
+                    subprocess.run(['rm', '-r', dir_name], check=True)
+                    os.makedirs(dir_name)
+                except subprocess.CalledProcessError as e:
+                    print(f'Error during deleting files in {dir_name}: {e}')
+        else:
+            os.makedirs(dir_name)
+
+    @staticmethod
+    def split_into_two(df, excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]',
+                    'SAMPLE_LENGTH[ms]', 'oldpath']):
+        mask = [cols for cols in df.columns if cols not in excluded_columns]
+        df_features = df.loc[:, mask]
+        excluded_part = df.loc[:, excluded_columns]
+        return df_features, excluded_part
+

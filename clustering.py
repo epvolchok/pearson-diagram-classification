@@ -1,33 +1,34 @@
-import os
-from PIL import Image
-import numpy as np
-from sklearn.cluster import KMeans
-from sklearn.manifold import TSNE
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-import umap
-from torchvision import models, transforms
-import torch
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-import hdbscan
-from sklearn.metrics import pairwise_distances
-from libcluster import Clustering
+import os
+
+from libpreprocessing import FeaturesPreprocessing
+from libclustering import Clustering
 from libfeatures import ResNetFeatures
 from libservice import ServiceFuncs
 
 input_imags = './images_reg_b/'
-
-obj = ResNetFeatures(input_imags, file='./data/pearson_diagram_data') #flag='extract'
-print('Original features')
-obj.info_on_features(vis=True, title='Original features')
-obj.database = obj.filtering_nonzerocolumns()
-print('Nonzero columns')
-obj.info_on_features(vis=True, title='Nonzero columns')
-obj.database = obj.filtering_by_variance()
+print('Features extraction')
+features = ResNetFeatures(input_imags, file='./data/pearson_diagram_data')
 print('Filtration by variance')
-obj.info_on_features(vis=True, title='Filtration by variance')
-ServiceFuncs.save_database(obj.database, file_name='filtered_pearson_diagram_data')
+features.database = features.filtering_by_variance()
+features.info_on_features()
+print('Saving database')
+ServiceFuncs.save_database(features.database, file_name='filtered_pearson_diagram_data')
+print('Preprocessing')
+preprop = FeaturesPreprocessing(features)
+processed = preprop.wrapper_preprop(features.database, 'PCA+UMAP10D')
+df_features, excluded_part = ServiceFuncs.split_into_two(processed)
+print('Clusterization')
+clusters = Clustering(processed)
+labels, num_clusters = clusters.clustering_HDBSCAN(df_features)
+print(f'Number of clusters 20D: {num_clusters}')
+clusters.update_database()
+print('Saving database')
+ServiceFuncs.save_database(clusters.df, file_name='clustered_pearson_diagram_data', kind='json')
+clusters.sort_files()
+clusters.visualize_HDBSCAN(features.database)
+
+
 
 """ obj = Clustering(input_imags)
 

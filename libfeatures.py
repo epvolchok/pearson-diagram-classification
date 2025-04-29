@@ -138,19 +138,10 @@ class ResNetFeatures:
         print(df_full.info())
         print(df_full.head())
         return df_full
-    
-    def split_into_two(self):
-        excluded_columns = ['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', \
-                    'SAMPLE_LENGTH[ms]', 'oldpath']
-        mask = [cols for cols in self.database.columns if cols not in excluded_columns]
-        
-        df_features = self.database.loc[:, mask]
-        excluded_part = self.database.loc[:, excluded_columns]
-        return df_features, excluded_part
 
     def filtering_nonzerocolumns(self):
         
-        df_features, excluded_part = self.split_into_two()
+        df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
         non_zero_columns = ~(df_features == 0).all(axis=0)
         filtered_features = df_features.loc[:, non_zero_columns]
         final_df = pd.concat([excluded_part, filtered_features], axis=1)
@@ -159,7 +150,7 @@ class ResNetFeatures:
         return final_df
     
     def filtering_by_variance(self, threshold=5e-5):
-        df_features, excluded_part = self.split_into_two()
+        df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
         selector = VarianceThreshold(threshold=threshold)
         filtered_features = selector.fit_transform(df_features)
         df_filtered = pd.DataFrame(
@@ -175,7 +166,7 @@ class ResNetFeatures:
         return final_df
     
     def info_on_features(self, **kwargs):
-        df_features, excluded_part = self.split_into_two()
+        df_features, _ = ServiceFuncs.split_into_two(self.database)
 
         distances = pairwise_distances(df_features, metric='cosine')
         mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
