@@ -6,3 +6,10 @@ Pearson diagrams are obtained from the results of numerical simulations of elect
 
 The example of a diargam is below.
 
+![processing](figures/processing.pdf?raw=True)
+
+![results](figures/clusterization.pdf?raw=True)
+
+![results_histogram](figures/histograms_sm.pdf?raw=True)
+
+
