@@ -5,6 +5,7 @@ __pycache__/
 *.npy
 
 # image data
+figures/
 processed/
 images_reg_colors/
 images_reg_b/
