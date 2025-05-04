@@ -11,6 +11,5 @@ The example of a diargam is below.
 
 ![results](figures/clusterization.png?raw=true)
 
-![results_histogram](figures/histograms.png?raw=true)
 
 
