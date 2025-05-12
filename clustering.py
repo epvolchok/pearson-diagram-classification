@@ -34,7 +34,7 @@ def main():
     results_dir = './processed/processed_'+specification
     default_filename = './results/pearson_diagram_data_'+specification
     default_info_path = './data/SOLO_info_rswf.txt'
-    name_pattern = r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'
+    name_pattern = r'(solo_L2_rpw-tds-surv-(?:r|t)swf-e_\d+\w+)'
     clear = ServiceFuncs.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
     print(clear)
     ServiceFuncs.preparing_folder(results_dir, clear=clear)

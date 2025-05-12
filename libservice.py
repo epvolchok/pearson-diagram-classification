@@ -56,16 +56,14 @@ class ServiceFuncs:
 
         kind = kwargs.get('kind', 'pickle')
         file_to_write = kwargs.get('file_to_write', 'pearson_diagram_data')
-        print('saving df')
-        print(df.head())
-        print(file_to_write)
+        print(f'Saving the database to {file_to_write}')
         try:
             if kind == 'pickle':
                 df.to_pickle(file_to_write+'.pkl')
             elif kind == 'json':
                 df.to_json(file_to_write+'.json')
         except:
-            print('Can not save the datbase')
+            print('Can not save the database')
 
     @staticmethod
     def read_database(**kwargs):

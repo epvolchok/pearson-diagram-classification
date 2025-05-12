@@ -26,7 +26,7 @@ class InteractiveMode:
             print(f'Check the name pattern: {name_pattern}')
             np_input = input('Change if it is needed or press "Enter": ').strip()
             if np_input:
-                name_pattern = r'+np_input+'
+                name_pattern = np_input
         return filter_mixed, name_pattern
     
     @staticmethod

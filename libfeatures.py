@@ -7,32 +7,55 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 
-from torchvision import models, transforms
-import torch
-from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import os
-from PIL import Image
 import re
-from functools import cached_property
-import datetime
-import matplotlib.pyplot as plt
+from PIL import Image
 
-from libservice import ServiceFuncs
+from torchvision import models, transforms
+import torch
+from tqdm import tqdm
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.metrics import pairwise_distances
+import matplotlib.pyplot as plt
+
+from functools import cached_property
 from dataclasses import dataclass, field
+
+from libservice import ServiceFuncs
 
 @dataclass
 class ResNetFeatures:
+
+    """
+    Extracts deep features from image datasets using torchvision model ResNet50,
+    merges them with metadata, and provides filtering and analysis tools.
+
+    Attributes
+    ----------
+    path : str
+        Path to the folder containing image files.
+    info_path : str
+        Path to the metadata text file with observation parameters.
+    flag : str
+        Mode of operation: 'read' to load precomputed database, 'extract' to generate it from images.
+    device : str
+        Computation device to use ('cuda' or 'cpu').
+    filter_mixed : bool
+        Whether to filter out mixed-frequency datasets.
+    name_pattern : str
+        Regex pattern to extract dataset names from image filenames.
+    extra_params : dict
+        Additional parameters for database loading/saving.
+    """
 
     path: str
     info_path: str = './data/SOLO_info_rswf.txt'
     flag: str = 'read'
     device: str = 'cuda'
     filter_mixed: bool = True
-    name_pattern: str = r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'
+    name_pattern: str = r'(solo_L2_rpw-tds-surv-(?:r|t)swf-e_\d+\w+)'
     extra_params: dict = field(default_factory=dict)
 
     # inner filed, will be initialized later
@@ -43,8 +66,11 @@ class ResNetFeatures:
     database: object = field(init=False)
     
     def __post_init__(self):
-        self._device = torch.device(self.device if torch.cuda.is_available() else 'cpu')
-        print(f'The device is {self._device}')
+        """
+        Initializes internal fields, filters images, and loads or creates the feature database.
+        """
+
+        self.set_device()
 
         self.names = [f for f in os.listdir(self.path) if ServiceFuncs.check_extension(f)]
         self.img_path = [os.path.join(self.path, name) for name in self.names]
@@ -58,47 +84,31 @@ class ResNetFeatures:
             self.database = ServiceFuncs.read_database(**self.extra_params)
         elif self.flag == 'extract':
             self.database = self.create_database()
-            print('database created')
-            print(self.database.head())
             ServiceFuncs.save_database(self.database, **self.extra_params)
         else:
             raise ValueError(f'Unknown flag: {self.flag}')
-
-    """
-    def __init__(self, path, **kwargs): #path, info_path='./data/SOLO_info_rswf.txt', device='cuda'): filter_mixed
-
-        device = kwargs.pop('device', 'cuda')
-        info_path = kwargs.pop('info_path', './data/SOLO_info_rswf.txt')
-        flag = kwargs.pop('flag', 'read')
-        filter_mixed = kwargs.pop('filter_mixed', True)
-
-        self.device = device
-        self.info_path = info_path
-        self.path = path
-
-
-        self._device = torch.device(device if torch.cuda.is_available() else 'cpu')
-        print(f'The device is {self._device}')
-
-        self.names = [f for f in os.listdir(path) if ServiceFuncs.check_extension(f)]
-        self.img_path = [path]*len(self.names)
-        self.img_path = [p + self.names[i] for i, p in enumerate(self.img_path)]
-        self.info = ServiceFuncs.load_info(info_path)
-        if filter_mixed:
-            name_pattern = kwargs.pop('name_pattern', r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)')
-            self.filtering_imgs(path, name_pattern)
-
-        if flag == 'read':
-            self.database = ServiceFuncs.read_database(**kwargs)
-        elif flag == 'extract':
-            self.database = self.create_database()
-            ServiceFuncs.save_database(self.database)
+        
+    def set_device(self):
+        """
+        Sets torch.device according to a user wish self.device if it is available
+        or CPU if it is not.
+        """
+        if self.device == 'cuda' and not torch.cuda.is_available():
+            print('CUDA requested but not available. Falling back to CPU.')
+            self._device = torch.device('cpu')
         else:
-            raise ValueError(f'Unknown flag: {flag}')
-    """
+            self._device = torch.device(self.device)
+        print(f'Using device: {self._device}')
 
     @cached_property
     def model(self):
+        """
+        Loads and caches the model and input transformation.
+        Returns
+        -------
+        tuple
+            A tuple (model, transform) where model is a torch.nn.Module and transform is a torchvision transform pipeline.
+        """
         transform = transforms.Compose([
         transforms.Resize((224)),
         transforms.ToTensor(),
@@ -114,6 +124,13 @@ class ResNetFeatures:
         return model_resnet50, transform
 
     def find_mixed_freq(self):
+        """
+        Identifies dataset names with mixed sampling frequencies in the metadata.
+        Returns
+        -------
+        pandas.Series
+            Series of dataset names to exclude.
+        """
         high_freq = 524
         low_freq = 262
 
@@ -128,7 +145,15 @@ class ResNetFeatures:
     
 
     def filtering_imgs(self, path: str, name_pattern: str):
-        
+        """
+        Filters out image paths (in self.img_path,self.names) corresponding to mixed-frequency datasets.
+        Parameters
+        ----------
+        path : str
+            Directory containing images.
+        name_pattern : str
+            Regular expression to extract dataset names from filenames.
+        """
         mixed_freq = self.find_mixed_freq()
         
         for p in self.img_path:
@@ -138,23 +163,36 @@ class ResNetFeatures:
                 self.img_path.remove(path+dataset_name+'.png')
 
     def features(self):
-        
+        """
+        Extracts deep features from all images using ResNet50 model.
+        Returns
+        -------
+        np.ndarray
+            Array of feature vectors for all valid images.
+        """
         model, transform = self.model
         model.eval()
         features = []
         for path in tqdm(self.img_path, desc='Extracting features'):
             try:
-                img = Image.open(path).convert('RGB')
-                img_tensor = transform(img).unsqueeze(0).to(self._device)
+                with Image.open(path).convert('RGB') as img:
+                    img_tensor = transform(img).unsqueeze(0).to(self._device)
                 with torch.no_grad():
                     feat = model(img_tensor).squeeze().cpu().numpy()
                 features.append(feat)
             except OSError as err:
-                print(f'Error while openning an image {self.img_path}: {err}')
+                print(f'Error while openning an image {path}: {err}')
         return np.array(features)
     
     
     def create_database(self):
+        """
+        Extracts features, merges them with metadata, and constructs a full DataFrame.
+        Returns
+        -------
+        pandas.DataFrame
+            Feature database with metadata.
+        """
         features = self.features()
         try:
             df_features = pd.DataFrame(
@@ -182,7 +220,13 @@ class ResNetFeatures:
         
 
     def filtering_nonzerocolumns(self):
-        
+        """
+        Removes columns in the feature matrix that contain only zeros.
+        Returns
+        -------
+        pandas.DataFrame
+            Filtered DataFrame with non-zero feature columns.
+        """
         df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
         non_zero_columns = ~(df_features == 0).all(axis=0)
         filtered_features = df_features.loc[:, non_zero_columns]
@@ -192,6 +236,18 @@ class ResNetFeatures:
         return final_df
     
     def filtering_by_variance(self, threshold=5e-5):
+        """
+        Removes low-variance features from the database.
+        Parameters
+        ----------
+        threshold : float
+            Minimum variance required for a feature to be retained.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Filtered DataFrame with high-variance features.
+        """
         df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
         selector = VarianceThreshold(threshold=threshold)
         filtered_features = selector.fit_transform(df_features)
@@ -204,7 +260,16 @@ class ResNetFeatures:
         print(final_df.shape[1])
         return final_df
     
-    def info_on_features(self, **kwargs):
+    def info_on_features(self, visualize=False, title=''):
+        """
+        Prints statistics on extracted features and optionally visualizes variance distribution.
+        Parameters
+        ----------
+        visualize : bool
+            If True, show a histogram of feature variances.
+        title : str
+            Optional title for the plot.
+        """
         df_features, _ = ServiceFuncs.split_into_two(self.database)
 
         distances = pairwise_distances(df_features, metric='cosine')
@@ -214,14 +279,13 @@ class ResNetFeatures:
         variances = np.var(df_features, axis=0)
         print(f'Average variance: {np.mean(variances)}')
 
-        if kwargs.get('vis', False) == True:
-
+        if visualize:
             plt.figure(figsize=(7,5))
             plt.subplot(1, 2, 1)
             plt.hist(variances, bins=50, color='skyblue')
             plt.ylabel('Frequency')
-            if 'title' in kwargs:
-                plt.title(kwargs['title'])
+            if title:
+                plt.title(title)
             else:
                 plt.title('Variance')
 
