@@ -22,9 +22,49 @@ import matplotlib.pyplot as plt
 from libservice import ServiceFuncs
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.metrics import pairwise_distances
+from dataclasses import dataclass, field
 
+@dataclass
 class ResNetFeatures:
 
+    path: str
+    info_path: str = './data/SOLO_info_rswf.txt'
+    flag: str = 'read'
+    device: str = 'cuda'
+    filter_mixed: bool = True
+    name_pattern: str = r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'
+    extra_params: dict = field(default_factory=dict)
+
+    # inner filed, will be initialized later
+    _device: torch.device = field(init=False)
+    names: list = field(init=False)
+    img_path: list = field(init=False)
+    info: dict = field(init=False)
+    database: object = field(init=False)
+    
+    def __post_init__(self):
+        self._device = torch.device(self.device if torch.cuda.is_available() else 'cpu')
+        print(f'The device is {self._device}')
+
+        self.names = [f for f in os.listdir(self.path) if ServiceFuncs.check_extension(f)]
+        self.img_path = [os.path.join(self.path, name) for name in self.names]
+
+        self.info = ServiceFuncs.load_info(self.info_path)
+
+        if self.filter_mixed:
+            self.filtering_imgs(self.path, self.name_pattern)
+
+        if self.flag == 'read':
+            self.database = ServiceFuncs.read_database(**self.extra_params)
+        elif self.flag == 'extract':
+            self.database = self.create_database()
+            print('database created')
+            print(self.database.head())
+            ServiceFuncs.save_database(self.database, **self.extra_params)
+        else:
+            raise ValueError(f'Unknown flag: {self.flag}')
+
+    """
     def __init__(self, path, **kwargs): #path, info_path='./data/SOLO_info_rswf.txt', device='cuda'): filter_mixed
 
         device = kwargs.pop('device', 'cuda')
@@ -55,7 +95,7 @@ class ResNetFeatures:
             ServiceFuncs.save_database(self.database)
         else:
             raise ValueError(f'Unknown flag: {flag}')
-
+    """
 
     @cached_property
     def model(self):
@@ -87,7 +127,7 @@ class ResNetFeatures:
         return df
     
 
-    def filtering_imgs(self, path, name_pattern=r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'):
+    def filtering_imgs(self, path: str, name_pattern: str):
         
         mixed_freq = self.find_mixed_freq()
         

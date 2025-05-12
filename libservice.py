@@ -20,7 +20,7 @@ import subprocess
 class ServiceFuncs:
 
     def __init__(self):
-        raise RuntimeError("This class can not be instantiate.")
+        raise RuntimeError('This class can not be instantiate.')
     
     @staticmethod
     def check_extension(file_path):
@@ -47,7 +47,7 @@ class ServiceFuncs:
     
     @staticmethod
     def save_database(df, **kwargs):
-        dir_name = './data/'
+        dir_name = './results/'
         try:
             if not os.path.exists(dir_name):
                 os.makedirs(dir_name)
@@ -56,11 +56,14 @@ class ServiceFuncs:
 
         kind = kwargs.get('kind', 'pickle')
         file_to_write = kwargs.get('file_to_write', 'pearson_diagram_data')
+        print('saving df')
+        print(df.head())
+        print(file_to_write)
         try:
             if kind == 'pickle':
-                df.to_pickle(dir_name+file_to_write+'.pkl')
+                df.to_pickle(file_to_write+'.pkl')
             elif kind == 'json':
-                df.to_json(dir_name+file_to_write+'.json')
+                df.to_json(file_to_write+'.json')
         except:
             print('Can not save the datbase')
 
@@ -68,7 +71,7 @@ class ServiceFuncs:
     def read_database(**kwargs):
         
         kind = kwargs.get('kind', 'pickle')
-        file_to_read = kwargs.get('file_to_read', './data/pearson_diagram_data')
+        file_to_read = kwargs.get('file_to_read', 'pearson_diagram_data')
         print(f'Reading a database from a file {file_to_read}')
         try:
             if kind == 'pickle':

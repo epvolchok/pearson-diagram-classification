@@ -15,6 +15,7 @@ from libpreprocessing import FeaturesPreprocessing
 from libclustering import Clustering
 from libfeatures import ResNetFeatures
 from libservice import ServiceFuncs
+from libinteractive import InteractiveMode
 
 def main():
 
@@ -22,13 +23,9 @@ def main():
     for dirname in base_dir_names:
         ServiceFuncs.preparing_folder(dirname, clear=False)
 
-    print('Welcome to the script!')
-    print('First place your images in a separate folder named according to the template: \n \
-        "images_(your_specification)" \n \
-    into "./images/" folder.')
+    InteractiveMode.welcome_message()
     input_imags = input('Please enter the name of your working directory: ').strip('./, ')
     print(input_imags)
-
 
 
     specification = ServiceFuncs.input_name(input_imags)
@@ -42,38 +39,10 @@ def main():
     print(clear)
     ServiceFuncs.preparing_folder(results_dir, clear=clear)
 
-    print(f'To extract features from images located in {input_imags} enter 1.')
-    print(f'To load features from a file enter 2.')
-    while True:
-        choice = int(input('[1/2]: ').strip())
-        info_path = input(f'Enter a path to the data description file (default "{default_info_path}")')
-        info_path = info_path if info_path else default_info_path
-        if choice == 1:
-            file_tw = input(f'Enter a file name to write extracted features (default "{default_filename}")')
-            filter_mixed = ServiceFuncs.get_bool('Would you like to filter mixed frequencies? (True or False)')
-            if filter_mixed:
-                print(f'Check the name pattern: {name_pattern}')
-                name_pattern = input('Change if it is needed or press "Enter": ')
-            print('Features extraction')
-            file_to_write = file_tw if file_tw else default_filename
-            kwargs = {
-                'flag': 'extract',
-                'info_path': info_path, 
-                'file_to_write': file_to_write, 
-                'filter_mixed': filter_mixed,
-                'name_pattern': name_pattern
-            }
-            features = ResNetFeatures('./images/'+input_imags+'/', **kwargs)
-            break
-        elif choice == 2:
-            file_tr = input(f'Enter a file name to read from (default "{default_filename}")')
-            file_to_read = file_tr if file_tr else default_filename
-            print('Loading features')
-            features = ResNetFeatures('./images/'+input_imags+'/', \
-                                        flag='read', info_path=info_path, file_to_read=file_to_read)
-            break
-        else:
-            print('Invalid input. \n Try again!')
+    features = InteractiveMode.get_features(input_imags, default_info_path, default_filename, name_pattern)
+
+    print('Done!')
+    print(features.database.head())
 
 
 if __name__ == '__main__':
