@@ -17,9 +17,7 @@ rc('text.latex', preamble=r"\usepackage[utf8]{inputenc}")
 matplotlib.rcParams.update({'font.size': 14})
 
 
-from libcluster import Clustering
-
-df_reg_data = pd.read_pickle('./data/pearson_diagram_data.pkl')
+df_reg_data = pd.read_json('./data/clustered_pearson_diagram_data_triggered.json')
 print(df_reg_data.head())
 print(df_reg_data.info())
 print('\n')
@@ -27,42 +25,70 @@ print(df_reg_data.describe(include='all'))
 
 
 print(df_reg_data['label'].value_counts())
-#sns.histplot(data=df_r, x='dist_to_sun[au]', hue='label', element='step')
 
-df_reg_data['SAMPLING_RATE[kHz]'] = df_reg_data['SAMPLING_RATE[Hz]'].floordiv(1000)
-df_reg_data.drop('SAMPLING_RATE[Hz]',  axis=1, inplace=True)
 df_reg_data['year'] = df_reg_data['date'].dt.year
 
 path = './processed/label_'
-labels = [0, 1, 2, 3]
+labels = df_reg_data['label'].value_counts().index.values
+#print(labels)
 xs = ['dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'year']
-colors = ['blue', 'orange', 'green', 'red']
-fig = plt.figure(figsize=(20, 12))
-gs = gridspec.GridSpec(4, 5)
+titles = ['Distance to Sun, au', 'Number of samples', 'Sampling rate, kHz', 'Sample length, ms', 'year']
+colors = ['tab:blue', 'tab:orange', 'tab:red', 'tab:green']
+fig = plt.figure(figsize=(16, 9))
+gs = gridspec.GridSpec(3, 5)
+
+label = 0
+iy = 0
+ix = 2
+
+def plot_hist(ax, data, xs, color, bin_num, title, xrange, label):
+
+    sns.histplot(data=data, x=xs, ax=ax, bins=bin_num, color=color)
+    ax.set_xlabel(' ')
+    ax.set_ylabel(' ')
+    #print(label)
+    if xrange:
+        ax.set_xlim(xrange)
+    if title:
+        ax.set_title(title)
+    if label:
+        ax.set_ylabel(label, rotation=0, color=color, labelpad=40.)
+
+bins = [10, 10, 5, 5, 5]
+
+cluster_labels = {
+    (0, 0): r'\textbf{Type A}',
+    (0, 1): r'\textbf{Type B}',
+    (0, 2): r'\textbf{Mostly}'+'\n'+r'\textbf{Type A}',
+    (0, 3): r'\textbf{Low}'+'\n'+r'\textbf{number}'+'\n'+r'\textbf{of samples }'}
+
+nums = df_reg_data['label'].value_counts()
+#print(nums[3])
+#for iy in range(len(labels)):
+#    cluster_labels[(0, iy)]
+
+
 for iy in range(len(labels)):
+    cluster_labels[(0, iy)] = r'\textbf{num = '+str(nums[labels[iy]])+' }'#cluster_labels[(0, iy)] + '\n' + r'\textbf{num = '+str(nums[labels[iy]])+' }'
     for ix in range(len(xs)):
         ax = plt.subplot(gs[iy, ix])
         df = df_reg_data[df_reg_data['label'] == labels[iy]]
-        sns.histplot(data=df, x=xs[ix], ax=ax, bins=5, color=colors[iy])
-        ax.set_xlabel(' ')
-        ax.set_ylabel(' ')
-        if ix == 0:
-            ax.set_ylabel(r'\textbf{label '+str(labels[iy])+'}', rotation=0, color=colors[iy], labelpad=30.)
+        bin_num = bins[ix]
+        title = ''
+        xrange = None
+        label = ''
+
+        if (ix, iy) in cluster_labels:
+            label = cluster_labels[(ix, iy)]
+        #if ix == 2 and (iy == 1 or iy == 2):
+            #xrange = (255, 269)
+            #bin_num = 1
         if iy == 0:
-            ax.set_title(xs[ix])
-#plt.tight_layout()
+            title = titles[ix]
 
-for iy in range(len(labels)):
-    fig2 = plt.figure(figsize=(10, 5))
-    gs2 = gridspec.GridSpec(1, 1)
-    ax2 = plt.subplot(gs2[0, 0])
-    path_ = path+str(labels[iy])+'/'
-    files = os.listdir(path_)
-    img = Image.open(path_+random.choice(files)).convert('RGB')
-    ax2.imshow(img, aspect='auto')
-    ax2.axis("off")
-    ax2.set_title(r'\textbf{label '+str(labels[iy])+'}', rotation=0, color=colors[iy])
-    plt.tight_layout()
-
+        plot_hist(ax, df, xs[ix], colors[iy], bin_num, title, xrange, label)
 plt.tight_layout()
+plt.savefig('./figures/histograms_triggered.pdf', format='pdf', dpi=300)
+
+
 plt.show()

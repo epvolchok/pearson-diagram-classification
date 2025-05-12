@@ -1,3 +1,11 @@
+#Copyright (c) 2025 Evgeniia VOLCHOK
+#for contacts e.p.volchok@gmail.com
+
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#http://www.apache.org/licenses/LICENSE-2.0
+
 import numpy as np
 import pandas as pd
 import os
@@ -99,8 +107,8 @@ class Clustering:
         if not os.path.exists('./figures'):
             os.makedirs('./figures')
 
-        plt.savefig('./figures/clusterization.pdf', format='pdf')
-        plt.savefig('./figures/clusterization.png', format='png', dpi=300)
+        plt.savefig('./figures/clusterization_triggered.pdf', format='pdf')
+        plt.savefig('./figures/clusterization_triggered.png', format='png', dpi=300)
 
         plt.show()
 

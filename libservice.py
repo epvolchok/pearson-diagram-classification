@@ -1,3 +1,12 @@
+#Copyright (c) 2025 Evgeniia VOLCHOK
+#for contacts e.p.volchok@gmail.com
+
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#http://www.apache.org/licenses/LICENSE-2.0
+
+
 import pandas as pd
 import numpy as np
 import os
@@ -46,12 +55,12 @@ class ServiceFuncs:
             print(f'Can not create directory {dir_name}')
 
         kind = kwargs.get('kind', 'pickle')
-        file_name = kwargs.get('file_name', 'pearson_diagram_data')
+        file_to_write = kwargs.get('file_to_write', 'pearson_diagram_data')
         try:
             if kind == 'pickle':
-                df.to_pickle(dir_name+file_name+'.pkl')
+                df.to_pickle(dir_name+file_to_write+'.pkl')
             elif kind == 'json':
-                df.to_json(dir_name+file_name+'.json')
+                df.to_json(dir_name+file_to_write+'.json')
         except:
             print('Can not save the datbase')
 
@@ -59,16 +68,16 @@ class ServiceFuncs:
     def read_database(**kwargs):
         
         kind = kwargs.get('kind', 'pickle')
-        file = kwargs.get('file', './data/pearson_diagram_data')
-        print(f'Reading a database from a file {file}')
+        file_to_read = kwargs.get('file_to_read', './data/pearson_diagram_data')
+        print(f'Reading a database from a file {file_to_read}')
         try:
             if kind == 'pickle':
-                df = pd.read_pickle(file+'.pkl')
+                df = pd.read_pickle(file_to_read+'.pkl')
                 print(df.head())
                 print(df.dtypes)
                 return df
             elif kind == 'json':
-                df = pd.read_json(file+'.json', dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'})
+                df = pd.read_json(file_to_read+'.json', dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'})
                 print(df.head())
                 print(df.dtypes)
                 return df
@@ -97,3 +106,19 @@ class ServiceFuncs:
         excluded_part = df.loc[:, excluded_columns]
         return df_features, excluded_part
 
+    @staticmethod
+    def input_name(input_imags):
+        pattern = r'images_(\w+)'
+        search = re.search(pattern, input_imags)
+        if search:
+            return search.group(1)
+        else:
+            return input_imags
+        
+    @staticmethod
+    def get_bool(prompt):
+        while True:
+            try:
+                return {'true': True, 'false': False}[input(prompt).lower()]
+            except KeyError:
+                print('Invalid input, please enter True or False!')

@@ -1,19 +1,91 @@
+#Copyright (c) 2025 Evgeniia VOLCHOK
+#for contacts e.p.volchok@gmail.com
+
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#http://www.apache.org/licenses/LICENSE-2.0
+
+
 import matplotlib.pyplot as plt
 import os
+import re
 
 from libpreprocessing import FeaturesPreprocessing
 from libclustering import Clustering
 from libfeatures import ResNetFeatures
 from libservice import ServiceFuncs
 
-input_imags = './images_reg_b/'
-print('Features extraction')
-features = ResNetFeatures(input_imags, file='./data/pearson_diagram_data')
+def main():
+
+    base_dir_names = ['./images', './processed', './figures', './data', './results']
+    for dirname in base_dir_names:
+        ServiceFuncs.preparing_folder(dirname, clear=False)
+
+    print('Welcome to the script!')
+    print('First place your images in a separate folder named according to the template: \n \
+        "images_(your_specification)" \n \
+    into "./images/" folder.')
+    input_imags = input('Please enter the name of your working directory: ').strip('./, ')
+    print(input_imags)
+
+
+
+    specification = ServiceFuncs.input_name(input_imags)
+    print(specification)
+
+    results_dir = './processed/processed_'+specification
+    default_filename = './results/pearson_diagram_data_'+specification
+    default_info_path = './data/SOLO_info_rswf.txt'
+    name_pattern = r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'
+    clear = ServiceFuncs.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
+    print(clear)
+    ServiceFuncs.preparing_folder(results_dir, clear=clear)
+
+    print(f'To extract features from images located in {input_imags} enter 1.')
+    print(f'To load features from a file enter 2.')
+    while True:
+        choice = int(input('[1/2]: ').strip())
+        info_path = input(f'Enter a path to the data description file (default "{default_info_path}")')
+        info_path = info_path if info_path else default_info_path
+        if choice == 1:
+            file_tw = input(f'Enter a file name to write extracted features (default "{default_filename}")')
+            filter_mixed = ServiceFuncs.get_bool('Would you like to filter mixed frequencies? (True or False)')
+            if filter_mixed:
+                print(f'Check the name pattern: {name_pattern}')
+                name_pattern = input('Change if it is needed or press "Enter": ')
+            print('Features extraction')
+            file_to_write = file_tw if file_tw else default_filename
+            kwargs = {
+                'flag': 'extract',
+                'info_path': info_path, 
+                'file_to_write': file_to_write, 
+                'filter_mixed': filter_mixed,
+                'name_pattern': name_pattern
+            }
+            features = ResNetFeatures('./images/'+input_imags+'/', **kwargs)
+            break
+        elif choice == 2:
+            file_tr = input(f'Enter a file name to read from (default "{default_filename}")')
+            file_to_read = file_tr if file_tr else default_filename
+            print('Loading features')
+            features = ResNetFeatures('./images/'+input_imags+'/', \
+                                        flag='read', info_path=info_path, file_to_read=file_to_read)
+            break
+        else:
+            print('Invalid input. \n Try again!')
+
+
+if __name__ == '__main__':
+    main()
+
+""" print('Features extraction')
+features = ResNetFeatures(input_imags, flag='extract', file_to_write='./data/pearson_diagram_data_triggered')
 print('Filtration by variance')
 features.database = features.filtering_by_variance()
 features.info_on_features()
 print('Saving database')
-ServiceFuncs.save_database(features.database, file_name='filtered_pearson_diagram_data')
+ServiceFuncs.save_database(features.database, file_to_write='filtered_pearson_diagram_data_triggered')
 print('Preprocessing')
 preprop = FeaturesPreprocessing(features)
 processed = preprop.wrapper_preprop(features.database, 'PCA+UMAP10D')
@@ -24,9 +96,9 @@ labels, num_clusters = clusters.clustering_HDBSCAN(df_features)
 print(f'Number of clusters 20D: {num_clusters}')
 clusters.update_database()
 print('Saving database')
-ServiceFuncs.save_database(clusters.df, file_name='clustered_pearson_diagram_data', kind='json')
+ServiceFuncs.save_database(clusters.df, file_to_write='clustered_pearson_diagram_data_triggered', kind='json')
 clusters.sort_files()
-clusters.visualize_HDBSCAN(features.database)
+clusters.visualize_HDBSCAN(features.database) """
 
 
 

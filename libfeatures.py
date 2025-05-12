@@ -1,3 +1,12 @@
+#Copyright (c) 2025 Evgeniia VOLCHOK
+#for contacts e.p.volchok@gmail.com
+
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#http://www.apache.org/licenses/LICENSE-2.0
+
+
 from torchvision import models, transforms
 import torch
 from tqdm import tqdm
@@ -15,11 +24,13 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.metrics import pairwise_distances
 
 class ResNetFeatures:
-    def __init__(self, path, **kwargs): #path, info_path='./data/SOLO_info_rswf.txt', device='cuda'):
+
+    def __init__(self, path, **kwargs): #path, info_path='./data/SOLO_info_rswf.txt', device='cuda'): filter_mixed
 
         device = kwargs.pop('device', 'cuda')
         info_path = kwargs.pop('info_path', './data/SOLO_info_rswf.txt')
         flag = kwargs.pop('flag', 'read')
+        filter_mixed = kwargs.pop('filter_mixed', True)
 
         self.device = device
         self.info_path = info_path
@@ -33,30 +44,17 @@ class ResNetFeatures:
         self.img_path = [path]*len(self.names)
         self.img_path = [p + self.names[i] for i, p in enumerate(self.img_path)]
         self.info = ServiceFuncs.load_info(info_path)
-        self.filtering_imgs(path)
+        if filter_mixed:
+            name_pattern = kwargs.pop('name_pattern', r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)')
+            self.filtering_imgs(path, name_pattern)
 
         if flag == 'read':
-            self.database = self.load_features(**kwargs)
+            self.database = ServiceFuncs.read_database(**kwargs)
         elif flag == 'extract':
             self.database = self.create_database()
             ServiceFuncs.save_database(self.database)
         else:
             raise ValueError(f'Unknown flag: {flag}')
-
-
-
-    def load_features(self, **kwargs):
-        """
-        flag='read': file, kind; as default file='./data/pearson_diagram_data', kind='pickle'
-        flag='extract': without any parameters
-        """
-        flag = kwargs.pop('flag', 'read')
-        print(kwargs)
-        if flag == 'read':
-            df = ServiceFuncs.read_database(**kwargs)
-        elif kwargs['flag'] == 'extract':
-            df = self.create_database()
-        return df
 
 
     @cached_property
@@ -89,8 +87,7 @@ class ResNetFeatures:
         return df
     
 
-    def filtering_imgs(self, path):
-        name_pattern = r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'
+    def filtering_imgs(self, path, name_pattern=r'(solo_L2_rpw-tds-surv-rswf-e_\d+\w+)'):
         
         mixed_freq = self.find_mixed_freq()
         
@@ -112,32 +109,37 @@ class ResNetFeatures:
                 with torch.no_grad():
                     feat = model(img_tensor).squeeze().cpu().numpy()
                 features.append(feat)
-            except:
-                print(f'Error while openning an image {self.img_path}')
+            except OSError as err:
+                print(f'Error while openning an image {self.img_path}: {err}')
         return np.array(features)
     
     
     def create_database(self):
         features = self.features()
-        df_features = pd.DataFrame(
-            features,
-            columns=[f'feat_{i}' for i in range(features.shape[1])]
-        )
+        try:
+            df_features = pd.DataFrame(
+                features,
+                columns=[f'feat_{i}' for i in range(features.shape[1])]
+            )
+
+            self.names = [name[:-4] for name in self.names]
+            df_features.insert(0, 'oldpath', self.img_path)
+            df_features.insert(0, 'dataset_name', self.names)
+            
+            
+            df_full = pd.merge(
+                self.info[['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']], 
+                df_features, 
+                how='left', on='dataset_name')
+            df_full.dropna(inplace=True, ignore_index=True)
+            print('Database with information about observation parameters and extracted features:')
+            print(df_full.info())
+            print(df_full.head())
+            return df_full
+        except Exception as err:
+            print(f'Error during the feature extraction or database creation: {err}')
         
-        self.names = [name[:-4] for name in self.names]
-        df_features.insert(0, 'oldpath', self.img_path)
-        df_features.insert(0, 'dataset_name', self.names)
         
-        
-        df_full = pd.merge(
-            self.info[['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']], 
-            df_features, 
-            how='left', on='dataset_name')
-        df_full.dropna(inplace=True, ignore_index=True)
-        print('Database with information about observation parameters and extracted features:')
-        print(df_full.info())
-        print(df_full.head())
-        return df_full
 
     def filtering_nonzerocolumns(self):
         
@@ -145,8 +147,8 @@ class ResNetFeatures:
         non_zero_columns = ~(df_features == 0).all(axis=0)
         filtered_features = df_features.loc[:, non_zero_columns]
         final_df = pd.concat([excluded_part, filtered_features], axis=1)
-        print('filtration')
-        print(filtered_features.shape[1])
+        print('Filtration of zero columns. Remaining size:')
+        print(final_df.shape[1])
         return final_df
     
     def filtering_by_variance(self, threshold=5e-5):
@@ -157,12 +159,9 @@ class ResNetFeatures:
             filtered_features,
             columns=[f'feat_{i}' for i in range(filtered_features.shape[1])]
         )
-        print('filtration')
-        print(df_filtered.shape[1])
+        print('Filtration by the variance threshold. Remaining size:')
         final_df = pd.concat([excluded_part, df_filtered], axis=1)
         print(final_df.shape[1])
-        #variances = np.var(df_features, axis=0)
-        #print(variances)
         return final_df
     
     def info_on_features(self, **kwargs):
