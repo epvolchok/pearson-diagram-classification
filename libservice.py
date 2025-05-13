@@ -96,7 +96,7 @@ class ServiceFuncs:
         return info
     
     @staticmethod
-    def extract_observ_data(path, pattern=r'(r|t)swf-e_(\d{4})(\d{2})(\d{2})'):
+    def extract_observ_data(path, pattern=r'(?:r|t)swf-e_(\d{4})(\d{2})(\d{2})'):
         """
         Extracts observation type and date from the filename using regex.
 

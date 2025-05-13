@@ -22,7 +22,7 @@ class FeaturesPreprocessing:
         self.models = {
             'pca': PCA(n_components=0.95, svd_solver='full'),
             'scaler': StandardScaler(),
-            'umap10d': umap.UMAP(n_components=20, min_dist=0.1, metric='cosine'),
+            'umapNd': umap.UMAP(n_components=20, min_dist=0.1, metric='cosine'),
             'umap2d': umap.UMAP(n_components=2, min_dist=0.1, metric='cosine')
         }
         if copy:

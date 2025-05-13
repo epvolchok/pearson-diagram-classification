@@ -39,103 +39,17 @@ def main():
     print(clear)
     ServiceFuncs.preparing_folder(results_dir, clear=clear)
 
-    features = InteractiveMode.get_features(input_imags, default_info_path, default_filename, name_pattern)
+    features = InteractiveMode.get_features(input_imags, default_info_path, default_filename, name_pattern) #ResNet object
 
     print('Done!')
     print(features.database.head())
+    InteractiveMode.run_processing(features, default_info_path, default_filename, name_pattern)
 
 
 if __name__ == '__main__':
     main()
 
-""" print('Features extraction')
-features = ResNetFeatures(input_imags, flag='extract', file_to_write='./data/pearson_diagram_data_triggered')
-print('Filtration by variance')
-features.database = features.filtering_by_variance()
-features.info_on_features()
-print('Saving database')
-ServiceFuncs.save_database(features.database, file_to_write='filtered_pearson_diagram_data_triggered')
-print('Preprocessing')
-preprop = FeaturesPreprocessing(features)
-processed = preprop.wrapper_preprop(features.database, 'PCA+UMAP10D')
-df_features, excluded_part = ServiceFuncs.split_into_two(processed)
-print('Clusterization')
-clusters = Clustering(processed)
-labels, num_clusters = clusters.clustering_HDBSCAN(df_features)
-print(f'Number of clusters 20D: {num_clusters}')
-clusters.update_database()
-print('Saving database')
-ServiceFuncs.save_database(clusters.df, file_to_write='clustered_pearson_diagram_data_triggered', kind='json')
-clusters.sort_files()
-clusters.visualize_HDBSCAN(features.database) """
 
-
-
-""" obj = Clustering(input_imags)
-
-#features = obj.features
-#obj.write_features()
-
-features = obj.read_features()
-print(np.std(features, axis=0))
-stds = np.std(features, axis=0)
-nonzero = [el for el in stds if el != 0]
-print(f'non zero {len(nonzero)}')
-#print(nonzero)
-print(f'std {np.std(nonzero)}')
-distances = pairwise_distances(features, metric='cosine')
-mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
-
-print('Average cosine distance between embeddings:', mean_dist)
-
-# 1. Дисперсия до фильтрации
-variances_before = np.var(features, axis=0)
-
-# 2. Удаляем признаки, которые равны 0 во всех строках
-non_zero_columns = ~(features == 0).all(axis=0)
-filtered_features = features[:, non_zero_columns]
-
-# 3. Дисперсия после фильтрации
-variances_after = np.var(filtered_features, axis=0)
-
-""" 
-"""plt.figure(figsize=(7,5))
-
-plt.subplot(1, 2, 1)
-plt.hist(variances_after, bins=50, color='skyblue')
-plt.title('Variance')
-plt.xlabel('Variance')
-plt.ylabel('Frequency') """
-
-"""from sklearn.feature_selection import VarianceThreshold
-
-selector = VarianceThreshold(threshold=5e-5)
-varfiltered_features = selector.fit_transform(filtered_features)
-variances_after_thershold = np.var(varfiltered_features, axis=0)
-
-""" 
-"""print("Осталось признаков:", varfiltered_features.shape[1])
-plt.subplot(1, 2, 2)
-plt.hist(variances_after_thershold, bins=50, color='skyblue')
-plt.title('Variance')
-plt.xlabel('Variance')
-plt.ylabel('Frequency') """
-
-
-
-"""
-print(np.std(varfiltered_features, axis=0))
-stds = np.std(varfiltered_features, axis=0)
-nonzero = [el for el in stds if el != 0]
-print(f'non zero {len(nonzero)}')
-#print(nonzero)
-print(f'std {np.std(nonzero)}')
-distances = pairwise_distances(varfiltered_features, metric='cosine')
-mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
-
-print('Average cosine distance between embeddings:', mean_dist)
-
-""" 
 """filtered_var_features = filtered_features[:, (variances_after > 0)]
 variances_after_after = np.var(filtered_var_features, axis=0)
 
