@@ -21,13 +21,14 @@ rm -f "$OUTDIR"/*.md
 
 # all .py files
 #PYTHON_FILES=$(find . -type f -name "*.py")
-PYTHON_FILES=("main.py" "libfeatures.py" "libpreprocessing.py" "libclustering.py" "libservice.py" "libinteractive.py")
+#PYTHON_FILES=("main.py" "libfeatures.py" "libpreprocessing.py" "libclustering.py" "libservice.py" "libinteractive.py")
+PYTHON_FILES=("libfeatures.py""libservice.py")
 
 # generate documentation
 for file in $PYTHON_FILES; do
     filename=$(basename "$file" .py)
-    echo "Documentation for $file"
-    pdoc "$file" --docformat numpydoc --output-dir "$OUTDIR" --format markdown
+    echo "Documentation for $file "
+    pdoc "$file" --docformat numpy --output-dir "$OUTDIR" #--format markdown
 done
 
 

@@ -19,6 +19,27 @@ class InteractiveMode:
         print(message)
 
     @staticmethod
+    def preparations():
+        base_dir_names = ['./images', './processed', './figures', './data', './results']
+        message = 'Use "./processed" folder for processed images \n' + \
+        '"./data" folder for info metadata \n' + \
+        '"./figures" and "./results" for graphic and data results, respectively.'
+        print(message)
+
+        for dirname in base_dir_names:
+            ServiceFuncs.preparing_folder(dirname, clear=False)
+
+        input_imags = input('Please enter the name of your working directory: ').strip('./, ')
+        specification = ServiceFuncs.input_name(input_imags)
+        results_dir = './processed/processed_'+specification
+        default_filename = './results/pearson_diagram_data_'+specification
+
+        clear = InteractiveMode.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
+        ServiceFuncs.preparing_folder(results_dir, clear=clear)
+
+        return input_imags, default_filename
+
+    @staticmethod
     def get_bool(prompt: str)-> bool: 
         """
         Prompt the user for a boolean (True/False) input.
@@ -46,7 +67,7 @@ class InteractiveMode:
 
     @staticmethod
     def filter_mixed_freq(name_pattern):
-        filter_mixed = ServiceFuncs.get_bool('Would you like to filter mixed frequencies? (True or False) ')
+        filter_mixed = InteractiveMode.get_bool('Would you like to filter mixed frequencies? (True or False) ')
         if filter_mixed:
             print(f'Check the name pattern: {name_pattern}')
             np_input = input('Change if it is needed or press "Enter": ').strip()
@@ -61,15 +82,13 @@ class InteractiveMode:
         return file_path
     
     @staticmethod
-    def get_features(input_imags, default_info_path, default_filename, name_pattern):
+    def get_features(input_imags, info_path, default_filename, name_pattern):
         message = f'To extract features from images located in {input_imags} enter 1. \n' + \
                 'To load features from a file enter 2.'
-        
+        print(message)
+
         while True:
             choice = int(input('[1/2]: ').strip())
-            
-            message = f'Enter a path to the data description file (default "{default_info_path}"): '
-            info_path = InteractiveMode.get_path(message, default_info_path)
 
             if choice == 1:
                 features = InteractiveMode.extract_features(input_imags, info_path, default_filename, name_pattern)
@@ -85,7 +104,7 @@ class InteractiveMode:
     
     @staticmethod
     def extract_features(input_imags, info_path, default_filename, name_pattern):
-        message = f'Enter a file name to write extracted features (default "{default_filename}"): '
+        message = f'Enter a file name to write extracted features (or press "Enter" for default "{default_filename}"): '
         file_to_write = InteractiveMode.get_path(message, default_filename)
         filter_mixed, name_pattern = InteractiveMode.filter_mixed_freq(name_pattern)
 
@@ -102,7 +121,7 @@ class InteractiveMode:
     
     @staticmethod
     def read_features(input_imags, info_path, default_filename, name_pattern):
-        message = f'Enter a file name to read from (default "{default_filename}"): '
+        message = f'Enter a file name to read from (or press "Enter" for default "{default_filename}"): '
         file_to_read = InteractiveMode.get_path(message, default_filename)
         filter_mixed, name_pattern = InteractiveMode.filter_mixed_freq(name_pattern)
 
@@ -118,41 +137,46 @@ class InteractiveMode:
         return features
     
     @staticmethod
-    def run_processing(features, info_path, default_filename, name_pattern):
+    def run_processing(features, default_filename):
         message = 'Would you like to launch the standart processing algorithm (1) or \n' + \
                     'to call separate blocks of processing manually (2)?'
         print(message)
         while True:
             num=input('Enter 1 or 2 (or break to stop): ')
-            if int(num) == 1:
-                InteractiveMode.standart_algorithm(features, default_filename)
-            elif int(num) == 2:
-                print('This part has not been implemented yet. Use 1 or break.')
-            elif num == 'break':
+            if num == 'break':
                 break
+            else:
+                if int(num) == 1:
+                    InteractiveMode.standart_algorithm(features, default_filename)
+                elif int(num) == 2:
+                    print('This part has not been implemented yet. Use 1 or break.')
+
 
 
     @staticmethod
     def standart_algorithm(features, default_filename):
         message = 'The standart algorithm: \n' + \
             '1. Filtration of ResNet features by variance, thershold=1e-5 \n' + \
-            '2. Preprocessing of the filetered features with \n' + \
+            '2. Preprocessing of the filtered features with \n' + \
             '   - PCA(n_components=0.95, svd_solver=\'full\') \n' + \
             '   - UMAP(n_components=20, min_dist=0.1, metric=\'cosine\') \n' + \
             '3. Clusterization \n' + \
             '- HDBSCAN(min_cluster_size=15, min_samples=5, metric=\'euclidean\') \n' + \
             '4. Visualization with PCA+UMAP2D+HDBSCAN'
+        print(message)
         
         features = InteractiveMode.filtration(features)
+        print(features)
+        print(features.database)
 
-        message = 'Enter a file name to save the filtered data: '
+        message = f'Enter a file name to save the filtered data (or press "Enter" to use default name): '
         InteractiveMode.saving_database(features.database, default_filename, message)
 
         processed = InteractiveMode.run_preprocessing(features, 'PCA+UMAPND')
 
         clusters = InteractiveMode.run_clusterization(processed)
 
-        message = 'Enter a file name to save the clustered data: '
+        message = 'Enter a file name to save the clustered data (or press "Enter" to use default name): '
         InteractiveMode.saving_database(clusters.df, default_filename, message)
 
         # Visualization
@@ -176,11 +200,11 @@ class InteractiveMode:
         return file_to_write
     
     @staticmethod
-    def saving_database(features, default_filename, message):
+    def saving_database(df, default_filename, message):
         file_to_write = input(message)
         suffix = input('or/and enter a suffix to the filename: ')
         file_to_write = InteractiveMode.create_name_to_save(default_filename, file_to_write=file_to_write, suffix=suffix)
-        ServiceFuncs.save_database(features.database, file_to_write=file_to_write)
+        ServiceFuncs.save_database(df, file_to_write=file_to_write)
 
     @staticmethod
     def run_preprocessing(features, pipe_str='PCA+UMAPND'):

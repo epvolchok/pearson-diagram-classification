@@ -85,9 +85,8 @@ class Clustering:
 
 
     def visualize_HDBSCAN(self, df):
-        excluded_columns = ['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', \
-                    'SAMPLE_LENGTH[ms]', 'path']
-        df_features, excluded_part = ServiceFuncs.split_into_two(df)
+        
+        df_features, _= ServiceFuncs.split_into_two(df)
         features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, 'PCA+UMAP2D')
         labels, n_clusters = self.clustering_HDBSCAN(features_processed)
         print(f'Found {n_clusters} clusters (2D)')
