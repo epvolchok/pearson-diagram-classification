@@ -80,4 +80,30 @@ class InteractiveMode:
             else:
                 print('Invalid input. \n Try again!')
         return features
+    
+    @staticmethod
+    def get_bool(prompt):
+        """
+        Prompt the user for a boolean (True/False) input.
+
+        Parameters
+        ----------
+        prompt : str
+            The message to display.
+
+        Returns
+        -------
+        bool
+            The user's input as a boolean.
+
+        Raises
+        ------
+        KeyError
+            If the input is not 'true' or 'false' (case-insensitive).
+        """
+        while True:
+            try:
+                return {'true': True, 'false': False}[input(prompt).lower()]
+            except KeyError as e:
+                print(f'Invalid input, please enter True or False! {e}')
 

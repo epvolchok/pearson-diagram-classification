@@ -8,29 +8,87 @@
 
 
 import pandas as pd
-import numpy as np
 import os
-from PIL import Image
 import re
 import datetime
-import subprocess
+import shutil
 
 
 
 class ServiceFuncs:
 
+    """
+    A static utility class providing helper functions for file handling, 
+    image validation, metadata processing, database I/O, and folder management.
+
+    This class is not meant to be instantiated.
+
+    Methods
+    -------
+    check_extension(file_path, allowed_extensions)
+        Validates the file extension against allowed types.
+
+    load_info(info_path)
+        Loads and processes observation metadata from a text file.
+
+    extract_observ_data(path, pattern)
+        Extracts observation type and date from a file path using regex.
+
+    save_database(df, file_to_write, kind)
+        Saves a pandas DataFrame to a file in pickle or JSON format.
+
+    read_database(file_to_read, kind)
+        Reads a pandas DataFrame from a file.
+
+    preparing_folder(dir_name, clear)
+        Prepares a directory, optionally clearing its contents.
+
+    split_into_two(df, excluded_columns)
+        Splits a DataFrame into features and metadata parts.
+
+    input_name(input_path, pattern)
+        Extracts a name ID from a path using regex.
+    """
+
     def __init__(self):
         raise RuntimeError('This class can not be instantiate.')
     
     @staticmethod
-    def check_extension(file_path):
-        allowed_extensions = (".jpg", ".jpeg", ".png")
+    def check_extension(file_path, allowed_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
+        """
+        Check if a file has one of the allowed extensions.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the file.
+        allowed_extensions : tuple of str, optional
+            Tuple of allowed file extensions.
+
+        Returns
+        -------
+        bool
+            True if the file has an allowed extension, False otherwise.
+        """
         if not file_path.lower().endswith(allowed_extensions):
             return False
         return True
     
     @staticmethod
     def load_info(info_path):
+        """
+        Load and preprocess metadata from a space-delimited text file.
+
+        Parameters
+        ----------
+        info_path : str
+            Path to the metadata file.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Parsed and enriched metadata, including date and sampling rate in kHz.
+        """
         info = pd.read_csv(info_path, delimiter=' ')
         info['date'] = pd.to_datetime(info[['year', 'month', 'day']])
         info['SAMPLING_RATE[kHz]'] = info['SAMPLING_RATE[Hz]'].floordiv(1000)
@@ -38,88 +96,168 @@ class ServiceFuncs:
         return info
     
     @staticmethod
-    def extract_observ_data(path):
-        template = r'(r|t)swf-e_(\d{4})(\d{2})(\d{2})'
-        search = re.search(template, path)
-        observation_type = search.group(1)
+    def extract_observ_data(path, pattern=r'(r|t)swf-e_(\d{4})(\d{2})(\d{2})'):
+        """
+        Extracts observation type and date from the filename using regex.
+
+        Parameters
+        ----------
+        path : str
+            File path or name.
+
+        Returns
+        -------
+        tuple
+            (observation_type, datetime.date)
+        
+        Raises
+        ------
+        ValueError
+            If the pattern is not found.
+        """
+        search = re.search(pattern, path)
+        if not search:
+            raise ValueError(f'Could not extract observation data from: {path}')
+        obs_type = search.group(1)
         date = datetime.date(int(search.group(2)), int(search.group(3)), int(search.group(4)))
-        return observation_type, date
+        return obs_type, date
     
     @staticmethod
-    def save_database(df, **kwargs):
-        dir_name = './results/'
-        try:
-            if not os.path.exists(dir_name):
-                os.makedirs(dir_name)
-        except:
-            print(f'Can not create directory {dir_name}')
+    def save_database(df, file_to_write='./results/pearson_diagram_data', kind='pickle'):
+        """
+        Save a pandas DataFrame to disk.
 
-        kind = kwargs.get('kind', 'pickle')
-        file_to_write = kwargs.get('file_to_write', 'pearson_diagram_data')
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Data to save.
+        file_to_write : str
+            Base filename without extension.
+        kind : {'pickle', 'json'}
+            Format to save the file in.
+        save_dir : str
+            Directory to save the file to.
+
+        Raises
+        ------
+        Exception
+            If saving fails.
+        """
         print(f'Saving the database to {file_to_write}')
         try:
             if kind == 'pickle':
                 df.to_pickle(file_to_write+'.pkl')
             elif kind == 'json':
                 df.to_json(file_to_write+'.json')
-        except:
-            print('Can not save the database')
+        except Exception as e:
+            print(f'Failed to save the database: {e}')
 
     @staticmethod
-    def read_database(**kwargs):
-        
-        kind = kwargs.get('kind', 'pickle')
-        file_to_read = kwargs.get('file_to_read', 'pearson_diagram_data')
+    def read_database(file_to_read='./results/pearson_diagram_data', kind='pickle', 
+                dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'}):
+        """
+        Read a pandas DataFrame from a file.
+
+        Parameters
+        ----------
+        file_to_read : str
+            Base filename without extension.
+        kind : {'pickle', 'json'}
+            Format of the file.
+        dtype : dict
+            To set types of columns in the database.
+
+        Returns
+        -------
+        pandas.DataFrame or None
+            The loaded DataFrame, or None if reading failed.
+        """
         print(f'Reading a database from a file {file_to_read}')
         try:
             if kind == 'pickle':
                 df = pd.read_pickle(file_to_read+'.pkl')
-                print(df.head())
-                print(df.dtypes)
-                return df
             elif kind == 'json':
-                df = pd.read_json(file_to_read+'.json', dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'})
-                print(df.head())
-                print(df.dtypes)
-                return df
-        except:
-            print('Error during reading a database')
+                df = pd.read_json(file_to_read+'.json', dtype=dtype)
+            print(df.head())
+            print(df.dtypes)
+            return df
+        except Exception as e:
+            print(f'Error during reading a database: {e}')
             return None
         
     @staticmethod
     def preparing_folder(dir_name, clear):
-        
+        """
+        Prepare a directory for output, optionally clearing its contents.
+
+        Parameters
+        ----------
+        dir_name : str
+            Path to the target directory.
+        clear : bool, optional
+            If True, the directory will be deleted and recreated.
+
+        Raises
+        ------
+        Exception
+            If directory manipulation fails.
+        """
         if os.path.exists(dir_name):
             if clear:
                 try:
-                    subprocess.run(['rm', '-r', dir_name], check=True)
+                    shutil.rmtree(dir_name)
                     os.makedirs(dir_name)
-                except subprocess.CalledProcessError as e:
+                except Exception as e:
                     print(f'Error during deleting files in {dir_name}: {e}')
         else:
             os.makedirs(dir_name)
 
     @staticmethod
-    def split_into_two(df, excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]',
-                    'SAMPLE_LENGTH[ms]', 'oldpath']):
+    def split_into_two(df, excluded_columns=None):
+        """
+        Split a DataFrame into features and metadata columns.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Input DataFrame.
+        excluded_columns : list of str, optional
+            Columns to exclude from the features set.
+
+        Returns
+        -------
+        tuple of pandas.DataFrame
+            (features_df, metadata_df)
+        """
+        if excluded_columns is None:
+            excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 
+                          'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'oldpath']
         mask = [cols for cols in df.columns if cols not in excluded_columns]
         df_features = df.loc[:, mask]
         excluded_part = df.loc[:, excluded_columns]
         return df_features, excluded_part
 
     @staticmethod
-    def input_name(input_imags):
-        pattern = r'images_(\w+)'
+    def input_name(input_imags, pattern=r'images_(\w+)'):
+        """
+        Extract an identifier from a file path using a regular expression.
+
+        Parameters
+        ----------
+        input_path : str
+            File path or name.
+        pattern : str
+            Regular expression to extract the identifier.
+
+        Returns
+        -------
+        str
+            Extracted identifier or the original input if no match found.
+        """
         search = re.search(pattern, input_imags)
         if search:
             return search.group(1)
         else:
             return input_imags
         
-    @staticmethod
-    def get_bool(prompt):
-        while True:
-            try:
-                return {'true': True, 'false': False}[input(prompt).lower()]
-            except KeyError:
-                print('Invalid input, please enter True or False!')
+

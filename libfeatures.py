@@ -104,6 +104,7 @@ class ResNetFeatures:
     def model(self):
         """
         Loads and caches the model and input transformation.
+        
         Returns
         -------
         tuple
@@ -126,6 +127,7 @@ class ResNetFeatures:
     def find_mixed_freq(self):
         """
         Identifies dataset names with mixed sampling frequencies in the metadata.
+
         Returns
         -------
         pandas.Series
@@ -147,6 +149,7 @@ class ResNetFeatures:
     def filtering_imgs(self, path: str, name_pattern: str):
         """
         Filters out image paths (in self.img_path,self.names) corresponding to mixed-frequency datasets.
+
         Parameters
         ----------
         path : str
@@ -165,6 +168,7 @@ class ResNetFeatures:
     def features(self):
         """
         Extracts deep features from all images using ResNet50 model.
+
         Returns
         -------
         np.ndarray
@@ -188,6 +192,7 @@ class ResNetFeatures:
     def create_database(self):
         """
         Extracts features, merges them with metadata, and constructs a full DataFrame.
+
         Returns
         -------
         pandas.DataFrame
@@ -222,6 +227,7 @@ class ResNetFeatures:
     def filtering_nonzerocolumns(self):
         """
         Removes columns in the feature matrix that contain only zeros.
+
         Returns
         -------
         pandas.DataFrame
@@ -238,6 +244,7 @@ class ResNetFeatures:
     def filtering_by_variance(self, threshold=5e-5):
         """
         Removes low-variance features from the database.
+
         Parameters
         ----------
         threshold : float
@@ -263,6 +270,7 @@ class ResNetFeatures:
     def info_on_features(self, visualize=False, title=''):
         """
         Prints statistics on extracted features and optionally visualizes variance distribution.
+
         Parameters
         ----------
         visualize : bool
