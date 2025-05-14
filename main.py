@@ -7,14 +7,6 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 
-import matplotlib.pyplot as plt
-import os
-import re
-
-from libpreprocessing import FeaturesPreprocessing
-from libclustering import Clustering
-from libfeatures import ResNetFeatures
-from libservice import ServiceFuncs
 from libinteractive import InteractiveMode
 
 def main():
@@ -25,7 +17,7 @@ def main():
     
     input_imags, default_filename = InteractiveMode.preparations()
     default_info_path = './data/SOLO_info_rswf.txt'
-    message = f'Enter a path to the file with metadata (or enter to use default {default_info_path}): '
+    message = f'Enter a path to the file with metadata (or press "Enter" to use default {default_info_path}): '
     info_path = InteractiveMode.get_path(message, default_info_path)
     name_pattern = r'(solo_L2_rpw-tds-surv-(?:r|t)swf-e_\d+\w+)'
 
