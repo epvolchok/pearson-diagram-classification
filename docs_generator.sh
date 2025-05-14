@@ -43,38 +43,44 @@ if [ -f "README.md" ]; then
 else
     echo "README.md not found"
 fi
-echo "Join html files"
+echo "Merge html files"
+
+ORDER=(
+  "README"
+  "libfeatures"
+  "libpreprocessing"
+  "libclustering"
+  "libinteractive"
+  "libservice"
+)
 
 {
-    echo "<!DOCTYPE html>"
-    echo "<html><head><meta charset='utf-8'><title>Documentation</title></head><body>"
-    
-    # Insert README
-    if [ -f "$TEMP_README_HTML" ]; then
-        echo "<section id='readme'>"
-        cat "$TEMP_README_HTML"
-        echo "</section><hr>"
-    fi
-
-    # Insert the rest html files
-    for htmlfile in "$OUTDIR"/*.html; do
-        if [ -f "$htmlfile" ]; then
-            echo "<section>"
-            cat "$htmlfile"
-            echo "</section><hr>"
-        fi
-    done
-
-    echo "</body></html>"
+  echo "<!DOCTYPE html>"
+  echo "<html><head><meta charset='utf-8'><title>Documentation</title></head><body>"
 } > "$FINAL_HTML"
+
+for name in "${ORDER[@]}"; do
+  filepath="$OUTDIR/$name.html"
+  if [[ -f "$filepath" ]]; then
+    echo "Adding $filepath"
+    echo "<section id=\"$name\">" >> "$FINAL_HTML"
+    cat "$filepath" >> "$FINAL_HTML"
+    echo "</section><hr>" >> "$FINAL_HTML"
+  else
+    echo "$filepath not found"
+  fi
+done
+
+echo "</body></html>" >> "$FINAL_HTML"
+
 
 echo "HTML-documentation has been created: $FINAL_HTML"
 
 # Convert HTML to PDF
-echo "Convert HTML to PDF"
-pandoc "$FINAL_HTML" -o "$FINAL_PDF" --pdf-engine=xelatex
+#echo "Convert HTML to PDF"
+#pandoc "$FINAL_HTML" -o "$FINAL_PDF" --pdf-engine=xelatex
 
-echo "PDF-documentation has been created: $FINAL_PDF"
+#echo "PDF-documentation has been created: $FINAL_PDF"
 
 
-rm -f "$TEMP_README_HTML"
+#rm -f "$TEMP_README_HTML"
