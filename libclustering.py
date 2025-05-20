@@ -64,7 +64,7 @@ class Clustering:
             self.df = df
         self.num_clusters = 0
         self.labels = []
-        self.dir = './processed'
+        self.dir = os.path.join(os.getcwd(), 'processed')
         ServiceFuncs.preparing_folder(self.dir, clear=clear)
 
 
@@ -105,11 +105,12 @@ class Clustering:
         """
         if os.path.exists(self.dir):
             for cl in range(self.num_clusters):
-                dir_name = self.dir+'/label_'+str(cl)
+                dir_name = os.path.join(self.dir,'label_'+str(cl))
                 if not os.path.exists(dir_name):
                     os.makedirs(dir_name)
             if not os.path.exists(self.dir+'/noise'):
-                os.makedirs(self.dir+'/noise')
+                noise_name = os.path.join(self.dir,'noise')
+                os.makedirs(noise_name)
 
 
     def create_newpath(self):
@@ -119,8 +120,8 @@ class Clustering:
         """
          
         for cl in range(self.num_clusters):
-            self.df.loc[self.df['label'] == cl, 'path'] = './processed/label_'+str(cl)
-        self.df.loc[self.df['label'] == -1, 'path'] = './processed/noise'
+            self.df.loc[self.df['label'] == cl, 'path'] = os.path.join(self.dir,'label_'+str(cl))
+        self.df.loc[self.df['label'] == -1, 'path'] = os.path.join(self.dir,'noise')
 
 
     def copy_files(self):
@@ -158,7 +159,7 @@ class Clustering:
         self.df.drop('oldpath', axis=1, inplace=True)
 
 
-    def visualize_HDBSCAN(self, df):
+    def visualize_HDBSCAN(self, df, filename=None):
         """
         Reduces the feature space to 2D using PCA + UMAP, applies HDBSCAN clustering, and plots the results.
 
@@ -193,12 +194,18 @@ class Clustering:
         plt.title('PCA + UMAP2D + HDBSCAN: clustering visualization')
         plt.xlabel('UMAP-1 component')
         plt.ylabel('UMAP-2  component')
-        
-        if not os.path.exists('./figures'):
-            os.makedirs('./figures')
 
-        plt.savefig('./figures/clusterization_triggered.pdf', format='pdf')
-        plt.savefig('./figures/clusterization_triggered.png', format='png', dpi=300)
+        fig_dir = os.path.join(os.getcwd(), 'figures')
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+
+        default_name = 'clusters'
+        if not filename:
+            filename = default_name
+        file_png = os.path.join(fig_dir, filename+'.png')
+        file_pdf = os.path.join(fig_dir, filename+'.pdf')
+        plt.savefig(file_pdf, format='pdf')
+        plt.savefig(file_png, format='png', dpi=300)
 
         plt.show()
 

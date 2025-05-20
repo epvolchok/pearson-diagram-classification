@@ -6,26 +6,27 @@
 #You may obtain a copy of the License at
 #http://www.apache.org/licenses/LICENSE-2.0
 
-
-from libinteractive import InteractiveMode
+import os
+from libinteractive import InputManager, PathManager, ProcessingPipeline
 
 def main():
 
 
-    InteractiveMode.welcome_message()
+    InputManager.welcome_message()
 
     
-    input_imags, default_filename = InteractiveMode.preparations()
-    default_info_path = './data/SOLO_info_rswf.txt'
+    input_imags, default_filename = PathManager.preparations()
+    cwd = os.getcwd()
+    default_info_path = os.path.join(cwd, 'data', 'SOLO_info_rswf.txt')
     message = f'Enter a path to the file with metadata (or press "Enter" to use default {default_info_path}): '
-    info_path = InteractiveMode.get_path(message, default_info_path)
+    info_path = PathManager.get_path(message, default_info_path)
     name_pattern = r'(solo_L2_rpw-tds-surv-(?:r|t)swf-e_\d+\w+)'
 
-    features = InteractiveMode.get_features(input_imags, info_path, default_filename, name_pattern) #ResNet object
+    features = ProcessingPipeline.get_features(input_imags, info_path, default_filename, name_pattern) #ResNet object
 
     print('Features are extracted/launched!')
 
-    InteractiveMode.run_processing(features, default_filename)
+    ProcessingPipeline.run_processing(features, default_filename)
 
 
 if __name__ == '__main__':

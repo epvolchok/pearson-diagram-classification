@@ -5,7 +5,7 @@
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
 #http://www.apache.org/licenses/LICENSE-2.0
-
+import os
 from libpreprocessing import FeaturesPreprocessing
 from libclustering import Clustering
 from libfeatures import ResNetFeatures
@@ -110,19 +110,20 @@ class PathManager:
             Suggested default filename for saving feature data.
         """
 
-        base_dir_names = ['./images', './processed', './figures', './data', './results']
-        message = 'Use "./processed" folder for processed images \n' + \
-        '"./data" folder for info metadata \n' + \
-        '"./figures" and "./results" for graphic and data results, respectively.'
+        base_dir_names = ['images', 'processed', 'figures', 'data', 'results', 'logs']
+        message = 'Use "processed" folder for processed images \n' + \
+        '"data" folder for info metadata \n' + \
+        '"figures" and "results" for graphic and data results, respectively.'
         print(message)
-
+        cwd = os.getcwd()
         for dirname in base_dir_names:
+            dirname = os.path.join(cwd, dirname)
             ServiceFuncs.preparing_folder(dirname, clear=False)
 
-        input_imags = InputManager.input_wrapper('Please enter the name of your working directory: ').strip('./, ')
+        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of your working directory: '))
         specification = ServiceFuncs.input_name(input_imags)
-        results_dir = './processed/processed_'+specification
-        default_filename = './results/pearson_diagram_data_'+specification
+        results_dir = os.path.join(cwd, 'processed', 'processed_'+specification)
+        default_filename = os.path.join(cwd, 'results', 'pearson_diagram_data_'+specification)
 
         clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
         ServiceFuncs.preparing_folder(results_dir, clear=clear)
@@ -276,10 +277,10 @@ class ProcessingPipeline:
         message = f'Enter a file name to write extracted features (or press "Enter" for default "{default_filename}"): '
         file_to_write = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
-
+        cwd = os.getcwd()
         print('Features extraction')
         features = ResNetFeatures(
-            path='./images/' + input_imags + '/',
+            path=os.path.join(cwd, 'images', input_imags),
             flag='extract',
             info_path=info_path,
             filter_mixed=filter_mixed,
@@ -313,10 +314,10 @@ class ProcessingPipeline:
         message = f'Enter a file name to read from (or press "Enter" for default "{default_filename}"): '
         file_to_read = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
-
+        cwd = os.getcwd()
         print('Loading features')
         features = ResNetFeatures(
-            path='./images/' + input_imags + '/',
+            path=os.path.join(cwd, 'images', input_imags),
             flag='read',
             info_path=info_path,
             filter_mixed=filter_mixed,

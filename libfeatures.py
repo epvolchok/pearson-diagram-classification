@@ -51,7 +51,7 @@ class ResNetFeatures:
     """
 
     path: str
-    info_path: str = './data/SOLO_info_rswf.txt'
+    info_path: str = os.path.join(os.getcwd(), 'data', 'SOLO_info_rswf.txt')
     flag: str = 'read'
     device: str = 'cuda'
     filter_mixed: bool = True
@@ -163,7 +163,8 @@ class ResNetFeatures:
             dataset_name = re.search(name_pattern, p).group(0)
             if dataset_name in mixed_freq.values:
                 self.names.remove(dataset_name+'.png')
-                self.img_path.remove(path+dataset_name+'.png')
+                filepath = os.path.join(path, dataset_name+'.png')
+                self.img_path.remove(filepath)
 
     def features(self):
         """

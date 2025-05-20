@@ -123,7 +123,7 @@ class ServiceFuncs:
         return obs_type, date
     
     @staticmethod
-    def save_database(df, file_to_write='./results/pearson_diagram_data', kind='pickle'):
+    def save_database(df, file_to_write=None, kind='pickle'):
         """
         Save a pandas DataFrame to disk.
 
@@ -143,6 +143,9 @@ class ServiceFuncs:
         Exception
             If saving fails.
         """
+        default_name = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data')
+        if not file_to_write:
+            file_to_read = default_name 
         print(f'Saving the database to {file_to_write}')
         try:
             if kind == 'pickle':
@@ -153,7 +156,7 @@ class ServiceFuncs:
             print(f'Failed to save the database: {e}')
 
     @staticmethod
-    def read_database(file_to_read='./results/pearson_diagram_data', kind='pickle', 
+    def read_database(file_to_read=None, kind='pickle', 
                 dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'}):
         """
         Read a pandas DataFrame from a file.
@@ -172,6 +175,10 @@ class ServiceFuncs:
         pandas.DataFrame or None
             The loaded DataFrame, or None if reading failed.
         """
+        default_name = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data')
+        if not file_to_read:
+            file_to_read = default_name 
+        
         print(f'Reading a database from a file {file_to_read}')
         try:
             if kind == 'pickle':
@@ -259,5 +266,7 @@ class ServiceFuncs:
             return search.group(1)
         else:
             return input_imags
+        
+    
         
 
