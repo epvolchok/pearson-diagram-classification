@@ -23,7 +23,10 @@ import matplotlib.pyplot as plt
 from functools import cached_property
 from dataclasses import dataclass, field
 
-from libservice import ServiceFuncs
+from libservice import ServiceFuncs, DBFuncs
+
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ResNetFeatures:
@@ -75,17 +78,21 @@ class ResNetFeatures:
         self.names = [f for f in os.listdir(self.path) if ServiceFuncs.check_extension(f)]
         self.img_path = [os.path.join(self.path, name) for name in self.names]
 
-        self.info = ServiceFuncs.load_info(self.info_path)
+        self.info = DBFuncs.load_info(self.info_path)
+        logger.debug(f'Path to the metadata file: {self.info}')
 
         if self.filter_mixed:
             self.filtering_imgs(self.path, self.name_pattern)
+        logger.debug(f'Filtration: {self.filter_mixed}')
 
+        logger.debug(f'Features load regime: {self.flag}')
         if self.flag == 'read':
-            self.database = ServiceFuncs.read_database(**self.extra_params)
+            self.database = DBFuncs.read_database(**self.extra_params)
         elif self.flag == 'extract':
             self.database = self.create_database()
-            ServiceFuncs.save_database(self.database, **self.extra_params)
+            DBFuncs.save_database(self.database, **self.extra_params)
         else:
+            logger.error(f'Unknown flag: {self.flag}')
             raise ValueError(f'Unknown flag: {self.flag}')
         
     def set_device(self):
@@ -96,9 +103,11 @@ class ResNetFeatures:
         if self.device == 'cuda' and not torch.cuda.is_available():
             print('CUDA requested but not available. Falling back to CPU.')
             self._device = torch.device('cpu')
+            logger.debug('CUDA requested but not available. Falling back to CPU.')
         else:
             self._device = torch.device(self.device)
         print(f'Using device: {self._device}')
+        logger.info(f'Using device: {self._device}')
 
     @cached_property
     def model(self):
@@ -110,6 +119,8 @@ class ResNetFeatures:
         tuple
             A tuple (model, transform) where model is a torch.nn.Module and transform is a torchvision transform pipeline.
         """
+        logger.info('ResNet50 model init')
+
         transform = transforms.Compose([
         transforms.Resize((224)),
         transforms.ToTensor(),
@@ -157,6 +168,7 @@ class ResNetFeatures:
         name_pattern : str
             Regular expression to extract dataset names from filenames.
         """
+        logger.debug('Images filtration')
         mixed_freq = self.find_mixed_freq()
         
         for p in self.img_path:
@@ -175,6 +187,7 @@ class ResNetFeatures:
         np.ndarray
             Array of feature vectors for all valid images.
         """
+        logger.info('Feature extraction')
         model, transform = self.model
         model.eval()
         features = []
@@ -186,9 +199,26 @@ class ResNetFeatures:
                     feat = model(img_tensor).squeeze().cpu().numpy()
                 features.append(feat)
             except OSError as err:
+                logging.warning(f'Error while openning an image {path}: {err}')
                 print(f'Error while openning an image {path}: {err}')
         return np.array(features)
     
+    def features_to_db(self):
+        features = self.features()
+        try:
+            df_features = pd.DataFrame(
+                features,
+                columns=[f'feat_{i}' for i in range(features.shape[1])]
+            )
+            self.names = [name[:-4] for name in self.names]
+            df_features.insert(0, 'oldpath', self.img_path)
+            df_features.insert(0, 'dataset_name', self.names)
+            logger.debug('Numpy features successfully saved in a database.')
+            return df_features
+        except Exception as err:
+            logging.error(f'Error during creation of the database from features: {err}')
+            raise ValueError
+        
     
     def create_database(self):
         """
@@ -199,31 +229,21 @@ class ResNetFeatures:
         pandas.DataFrame
             Feature database with metadata.
         """
-        features = self.features()
-        try:
-            df_features = pd.DataFrame(
-                features,
-                columns=[f'feat_{i}' for i in range(features.shape[1])]
-            )
-
-            self.names = [name[:-4] for name in self.names]
-            df_features.insert(0, 'oldpath', self.img_path)
-            df_features.insert(0, 'dataset_name', self.names)
+        df_features = self.features_to_db()
+        
+        df_info = self.info[['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']]
             
-            
-            df_full = pd.merge(
-                self.info[['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']], 
+        df_full = pd.merge(
+                df_info, 
                 df_features, 
                 how='left', on='dataset_name')
-            df_full.dropna(inplace=True, ignore_index=True)
-            print('Database with information about observation parameters and extracted features:')
-            print(df_full.info())
-            print(df_full.head())
-            return df_full
-        except Exception as err:
-            print(f'Error during the feature extraction or database creation: {err}')
-        
-        
+        df_full.dropna(inplace=True, ignore_index=True)
+        print('Database with information about observation parameters and extracted features:')
+        logger.info('Database on features and observation parameters description created')
+        print(df_full.info())
+        print(df_full.head())
+        return df_full
+
 
     def filtering_nonzerocolumns(self):
         """
@@ -234,11 +254,15 @@ class ResNetFeatures:
         pandas.DataFrame
             Filtered DataFrame with non-zero feature columns.
         """
-        df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
+        logger.info('Filtarion of columns in the feature matrix that contain only zeros')
+
+        df_features, excluded_part = DBFuncs.split_into_two(self.database)
         non_zero_columns = ~(df_features == 0).all(axis=0)
         filtered_features = df_features.loc[:, non_zero_columns]
         final_df = pd.concat([excluded_part, filtered_features], axis=1)
+
         print('Filtration of zero columns. Remaining size:')
+        logger.info(f'Remaining size: {final_df.shape[1]}')
         print(final_df.shape[1])
         return final_df
     
@@ -256,15 +280,19 @@ class ResNetFeatures:
         pandas.DataFrame
             Filtered DataFrame with high-variance features.
         """
-        df_features, excluded_part = ServiceFuncs.split_into_two(self.database)
+        logger.info('Filtarion of low-variance features')
+
+        df_features, excluded_part = DBFuncs.split_into_two(self.database)
         selector = VarianceThreshold(threshold=threshold)
         filtered_features = selector.fit_transform(df_features)
         df_filtered = pd.DataFrame(
             filtered_features,
             columns=[f'feat_{i}' for i in range(filtered_features.shape[1])]
         )
+
         print('Filtration by the variance threshold. Remaining size:')
         final_df = pd.concat([excluded_part, df_filtered], axis=1)
+        logger.info(f'Remaining size: {final_df.shape[1]}')
         print(final_df.shape[1])
         return final_df
     
@@ -279,23 +307,28 @@ class ResNetFeatures:
         title : str
             Optional title for the plot.
         """
-        df_features, _ = ServiceFuncs.split_into_two(self.database)
+        df_features, _ = DBFuncs.split_into_two(self.database)
 
         distances = pairwise_distances(df_features, metric='cosine')
         mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
 
-        print('Average cosine distance between embeddings:', mean_dist)
+        print(f'Average cosine distance between embeddings: {mean_dist}')
+        logger.info(f'Average cosine distance between embeddings: {mean_dist}')
         variances = np.var(df_features, axis=0)
         print(f'Average variance: {np.mean(variances)}')
+        logger.info(f'Average variance: {np.mean(variances)}')
 
         if visualize:
-            plt.figure(figsize=(7,5))
-            plt.subplot(1, 2, 1)
-            plt.hist(variances, bins=50, color='skyblue')
-            plt.ylabel('Frequency')
-            if title:
-                plt.title(title)
-            else:
-                plt.title('Variance')
+            self.visualize_variance(variances, title=title)
+
+    def visualize_variance(self, variances, title=''):
+        plt.figure(figsize=(7,5))
+        plt.subplot(1, 2, 1)
+        plt.hist(variances, bins=50, color='skyblue')
+        plt.ylabel('Frequency')
+        if title:
+            plt.title(title)
+        else:
+            plt.title('Variance')
 
 

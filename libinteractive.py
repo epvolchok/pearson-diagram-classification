@@ -5,15 +5,19 @@
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
 #http://www.apache.org/licenses/LICENSE-2.0
+
 import os
 from libpreprocessing import FeaturesPreprocessing
 from libclustering import Clustering
 from libfeatures import ResNetFeatures
-from libservice import ServiceFuncs
+from libservice import ServiceFuncs, DBFuncs
+
+import logging
+logger = logging.getLogger(__name__)
 
 class InputManager:
     def __init__(self):
-        raise RuntimeError('This class can not be instantiate.')
+        ServiceFuncs.init_error()
     
     @staticmethod
     def input_wrapper(message):
@@ -21,7 +25,8 @@ class InputManager:
             user_input = input(message)
             return user_input
         except KeyboardInterrupt:
-            print("\nInterrupted by user.")
+            logger.error('KeyboardInterrupt')
+            print('\nInterrupted by user.')
             return
         
     @staticmethod
@@ -34,6 +39,7 @@ class InputManager:
         'First place your images in a separate folder (into "./images/") named according to the template: \n \
         "images_(your_specification)"'
         print(message)
+        logger.info('Script started')
 
     @staticmethod
     def get_bool(prompt: str)-> bool: 
@@ -63,6 +69,7 @@ class InputManager:
                     return {'true': True, 'false': False}[answ]
                 except KeyError as e:
                     print(f'Invalid input, please enter True or False! {e}')
+                    logger.error(f'Invalid input, please enter True or False! {e}')
             else:
                 return True
                 
@@ -86,16 +93,20 @@ class InputManager:
         """
 
         filter_mixed = InputManager.get_bool('Would you like to filter mixed frequencies? (True or False) ')
+        logger.info(f'Filter mixed frequencies: {filter_mixed}')
         if filter_mixed:
             print(f'Check the name pattern: {name_pattern}')
             np_input = InputManager.input_wrapper('Change if it is needed or press "Enter": ').strip()
             if np_input:
                 name_pattern = np_input
+        logger.info(f'Name pattern: {name_pattern}')
         return filter_mixed, name_pattern
+
+
 
 class PathManager:
     def __init__(self):
-        raise RuntimeError('This class can not be instantiate.')
+        ServiceFuncs.init_error()
     
     @staticmethod
     def preparations():
@@ -111,25 +122,54 @@ class PathManager:
         """
 
         base_dir_names = ['images', 'processed', 'figures', 'data', 'results', 'logs']
+        cwd = os.getcwd()
         message = 'Use "processed" folder for processed images \n' + \
         '"data" folder for info metadata \n' + \
         '"figures" and "results" for graphic and data results, respectively.'
         print(message)
+        
+        PathManager.create_base_dirs(*base_dir_names)
+
+        input_imags = PathManager.images_folder()
+        default_filename = PathManager.create_results_dir(input_imags)
+        
+        return input_imags, default_filename
+    
+    @staticmethod
+    def create_base_dirs(*args):
         cwd = os.getcwd()
-        for dirname in base_dir_names:
+        for dirname in args:
             dirname = os.path.join(cwd, dirname)
             ServiceFuncs.preparing_folder(dirname, clear=False)
+        logger.info('Base directories checked or created')
+    
+    @staticmethod
+    def images_folder():
+        cwd = os.getcwd()
+        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
+        isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
 
-        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of your working directory: '))
+        while not isdir:
+            print(f'Wrong folder name: {input_imags}. Try again.')
+            logger.debug(f'Wrong folder name: {input_imags}')
+            input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
+            isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
+
+        return input_imags
+    
+    @staticmethod
+    def create_results_dir(input_imags):
+        cwd = os.getcwd()
         specification = ServiceFuncs.input_name(input_imags)
         results_dir = os.path.join(cwd, 'processed', 'processed_'+specification)
         default_filename = os.path.join(cwd, 'results', 'pearson_diagram_data_'+specification)
+        logger.info(f'Source images: {input_imags} Results: {results_dir, default_filename}')
 
         clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
         ServiceFuncs.preparing_folder(results_dir, clear=clear)
+        logger.info(f'Clearing results folder: {clear}')
+        return default_filename
 
-        return input_imags, default_filename
-    
     @staticmethod
     def get_path(message, default_path):
         """
@@ -152,30 +192,7 @@ class PathManager:
         file_path = file_path if file_path else default_path
         return file_path
     
-    @staticmethod
-    def create_name_to_save(default_filename, file_to_write=None, suffix=None):
-        """
-        Constructs a filename by combining a base name with a suffix.
 
-        Parameters
-        ----------
-        default_filename : str
-            Base filename.
-        file_to_write : str, optional
-            Custom filename provided by the user.
-        suffix : str, optional
-            Suffix to append to the filename.
-
-        Returns
-        -------
-        str
-            Full filename with optional suffix.
-        """
-        if not file_to_write:
-            file_to_write = default_filename
-        if suffix:
-            file_to_write += suffix
-        return file_to_write
     
     @staticmethod
     def saving_database(df, default_filename, message, suf):
@@ -193,10 +210,11 @@ class PathManager:
         suf : str
             Default suffix to append to the filename.
         """
+        logger.info(f'Saving database')
         file_to_write = InputManager.input_wrapper(message)
         suffix = InputManager.input_wrapper('or/and enter a suffix to the filename: ') or suf
-        file_to_write = PathManager.create_name_to_save(default_filename, file_to_write=file_to_write, suffix=suffix)
-        ServiceFuncs.save_database(df, file_to_write=file_to_write)
+        file_to_write = ServiceFuncs.create_name(default_filename, file_to_write=file_to_write, suffix=suffix)
+        DBFuncs.save_database(df, file_to_write=file_to_write)
 
 class ProcessingPipeline:
     """
@@ -207,7 +225,7 @@ class ProcessingPipeline:
     This class is not intended to be instantiated.
     """
     def __init__(self):
-        raise RuntimeError('This class can not be instantiate.')
+        ServiceFuncs.init_error()
     
     @staticmethod
     def get_features(input_imags, info_path, default_filename, name_pattern):
@@ -233,24 +251,22 @@ class ProcessingPipeline:
         message = f'To extract features from images located in {input_imags} enter 1. \n' + \
                 'To load features from a file enter 2.'
         print(message)
-
+        logger.info('Getting features')
+        
         while True:
-            try:
-                choice = int(InputManager.input_wrapper('[1/2]: ').strip())
-            except ValueError:
-                print("Invalid input. Please enter 1 or 2.")
-                continue
-
-            if choice == 1:
+            choice = InputManager.input_wrapper('[1/2]: ').strip()
+            logger.info(f'Choice: {choice}')
+            if choice == '1':
                 features = ProcessingPipeline.extract_features(input_imags, info_path, default_filename, name_pattern)
                 break
-
-            elif choice == 2:
-                
+            elif choice == '2':
                 features = ProcessingPipeline.read_features(input_imags, info_path, default_filename, name_pattern)
+                break
+            elif choice == 'break':
                 break
             else:
                 print('Invalid input. \n Try again!')
+                logger.debug('Invalid input. Please enter 1 or 2 (or break).')
         return features
 
     @staticmethod
@@ -278,7 +294,10 @@ class ProcessingPipeline:
         file_to_write = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
         cwd = os.getcwd()
+
         print('Features extraction')
+        logger.info(f'Features extraction. File to write: {file_to_write}.')
+
         features = ResNetFeatures(
             path=os.path.join(cwd, 'images', input_imags),
             flag='extract',
@@ -287,6 +306,7 @@ class ProcessingPipeline:
             name_pattern=name_pattern,
             extra_params={'file_to_write': file_to_write}
         )
+        logger.info('Features extracted successfully')
         return features
     
     @staticmethod
@@ -315,7 +335,10 @@ class ProcessingPipeline:
         file_to_read = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
         cwd = os.getcwd()
+
         print('Loading features')
+        logger.info(f'Loading features. File to read from: {file_to_read}.')
+
         features = ResNetFeatures(
             path=os.path.join(cwd, 'images', input_imags),
             flag='read',
@@ -324,6 +347,7 @@ class ProcessingPipeline:
             name_pattern=name_pattern,
             extra_params={'file_to_read': file_to_read}
         )
+        logger.info('Features loaded successfully')
         return features
     
     @staticmethod
@@ -341,15 +365,19 @@ class ProcessingPipeline:
         message = 'Would you like to launch the standard processing algorithm (1) or \n' + \
                     'to call separate blocks of processing manually (2)?'
         print(message)
+        logger.info('Processing running')
         while True:
-            num=InputManager.input_wrapper('Enter 1 or 2 (or break to stop): ')
-            if num == 'break':
+            choice = InputManager.input_wrapper('[1/2]: ').strip()
+            logger.info(f'Choice: {choice}')
+            if choice == '1':
+                ProcessingPipeline.standard_algorithm(features, default_filename)
+            elif choice == '2':
+                print('This part has not been implemented yet. Use 1 or break.')
+            elif choice == 'break':
                 break
             else:
-                if int(num) == 1:
-                    ProcessingPipeline.standard_algorithm(features, default_filename)
-                elif int(num) == 2:
-                    print('This part has not been implemented yet. Use 1 or break.')
+                print('Invalid input. \n Try again!')
+                logger.debug('Invalid input. Please enter 1 or 2 (or break).')
 
 
 
@@ -378,7 +406,8 @@ class ProcessingPipeline:
             '- HDBSCAN(min_cluster_size=15, min_samples=5, metric=\'euclidean\') \n' + \
             '4. Visualization with PCA+UMAP2D+HDBSCAN'
         print(message)
-        
+        logger.info('Standard algorithm launched')
+
         features = ProcessingPipeline.filtration(features)
 
         message = f'Enter a file name to save the filtered data (or press "Enter" to use default name): '
@@ -392,6 +421,7 @@ class ProcessingPipeline:
         PathManager.saving_database(clusters.df, default_filename, message, suf='_clustered')
 
         # Visualization
+        logger.info('Visualization')
         clusters.visualize_HDBSCAN(features.database)
 
     @staticmethod
@@ -410,6 +440,7 @@ class ProcessingPipeline:
             Filtered features with updated `.database`.
         """
         print('Filtration')
+        logger.info(f'Filtration')
         features.database = features.filtering_by_variance()
         features.info_on_features()
         return features
@@ -432,6 +463,7 @@ class ProcessingPipeline:
             Transformed feature DataFrame with original metadata preserved.   
         """
         print('Preprocessing')
+        logger.info('Preprocessing')
         preprop = FeaturesPreprocessing(features)
         processed = preprop.wrapper_preprop(features.database, pipe_str)
         return processed
@@ -453,8 +485,9 @@ class ProcessingPipeline:
         """
 
         print('Clusterization')
+        logger.info('Clusterization')
         clusters = Clustering(features)
-        df_features, _ = ServiceFuncs.split_into_two(features)
+        df_features, _ = DBFuncs.split_into_two(features)
         _, num_clusters = clusters.clustering_HDBSCAN(df_features)
         print(f'Number of clusters 20D: {num_clusters}')
         clusters.update_database()

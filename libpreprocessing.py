@@ -12,9 +12,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import umap
 import pandas as pd
-from libservice import ServiceFuncs
+from libservice import ServiceFuncs, DBFuncs
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 class FeaturesPreprocessing:
 
@@ -79,7 +80,7 @@ class FeaturesPreprocessing:
         KeyError
             If the pipeline string contains unknown model names.
         """
-        
+        logger.info(f'Preprocessing launched wtih "{pipe_str}" pipeline')
         models = pipe_str.lower().split('+')
         pipes = []
         for m in models:
@@ -87,8 +88,10 @@ class FeaturesPreprocessing:
         if df.size:
             pipe = Pipeline(pipes)
             results = pipe.fit_transform(df)
+            logger.debug('Preprocessing finishes successfully.')
             return results
         else:
+            logger.error('Something goes wrong')
             return None
         
     def wrapper_preprop(self, df, pipe_str):
@@ -118,7 +121,7 @@ class FeaturesPreprocessing:
             If feature transformation fails or input DataFrame is empty.
         """
 
-        df_features, excluded_part = ServiceFuncs.split_into_two(df)
+        df_features, excluded_part = DBFuncs.split_into_two(df)
         processed = self.preproccessing(df_features, pipe_str)
         df_processed = pd.DataFrame(
             processed,

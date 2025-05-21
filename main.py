@@ -7,7 +7,56 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 import os
+import logging
 from libinteractive import InputManager, PathManager, ProcessingPipeline
+from libservice import ServiceFuncs
+
+def get_log_filename(log_dir='logs', log_name=None):
+    """
+    Determines a log file name.
+
+    Parameters
+    ----------
+    log_dir : str
+        Directory where log files are stored.
+    log_name : str or None
+        Custom log file name (e.g., 'log_experiment42.log').
+        If None, a new log name will be generated as 'log_XX.log'.
+
+    Returns
+    -------
+    str
+        Full path to the log file.
+    """
+    os.makedirs(log_dir, exist_ok=True)
+
+    if log_name:
+        if not log_name.endswith('.log'):
+            log_name += '.log'
+        return os.path.join(log_dir, log_name)
+
+    # Get existing log files
+    existing_logs = [f for f in os.listdir(log_dir) if f.startswith('log_') and f.endswith('.log')]
+    count = len(existing_logs)
+    next_num = count + 1
+
+    if count < 10:
+        name = f'log_{next_num:02d}.log'  # log_01.log, log_02.log, ...
+    else:
+        name = f'log_{next_num}.log'      # log_11.log, log_12.log, ...
+
+    return os.path.join(log_dir, name)
+
+def setup_logging(log_file='pipeline.log'):
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.FileHandler(log_file, mode='w'),
+            #logging.StreamHandler()
+        ]
+    )
 
 def main():
 
@@ -30,6 +79,10 @@ def main():
 
 
 if __name__ == '__main__':
+    
+    log_name = get_log_filename()
+    setup_logging(log_name)
+    
     main()
 
 

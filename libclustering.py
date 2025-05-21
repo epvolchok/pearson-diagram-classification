@@ -12,7 +12,7 @@ import subprocess
 
 import hdbscan
 
-from libservice import ServiceFuncs
+from libservice import ServiceFuncs, DBFuncs
 from libpreprocessing import FeaturesPreprocessing
 import matplotlib.pyplot as plt
 import matplotlib
@@ -24,6 +24,8 @@ rc('font', family='serif')
 rc('text.latex', preamble=r"\usepackage[utf8]{inputenc}")
 matplotlib.rcParams.update({'font.size': 14})
 
+import logging
+logger = logging.getLogger(__name__)
 
 class Clustering:
 
@@ -84,33 +86,37 @@ class Clustering:
         num_clusters : int
             Number of clusters detected (excluding noise).
         """
-        
+        logger.info('Clusterization with HDBSCAN')
         clusterer = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=5, metric='euclidean')
         self.labels = clusterer.fit_predict(df)
         self.num_clusters = len(set(self.labels)) - (1 if -1 in self.labels else 0)
+        logger.info(f'Number of clusters: {self.num_clusters}')
         return self.labels, self.num_clusters
     
     def update_database(self):
         """
         Inserts the cluster labels into the internal DataFrame as a new column 'label'.
         """
+        try:
+            self.df.insert(1, 'label', self.labels)
+            self.df.head()
+            logger.debug('Insertion of cluster labels to the database.')
+        except Exception as err:
+            logger.error(f'Labels can not be added to the database: {err}')
 
-        self.df.insert(1, 'label', self.labels)
-        self.df.head()
-
-    def create_dirs(self):
+    def create_dirs(self, clear=False):
         """
         Creates output directories for each cluster and a separate one for noise.
         The directories are created under `self.dir` if they do not already exist.
         """
-        if os.path.exists(self.dir):
-            for cl in range(self.num_clusters):
-                dir_name = os.path.join(self.dir,'label_'+str(cl))
-                if not os.path.exists(dir_name):
-                    os.makedirs(dir_name)
-            if not os.path.exists(self.dir+'/noise'):
-                noise_name = os.path.join(self.dir,'noise')
-                os.makedirs(noise_name)
+        for cl in range(self.num_clusters):
+            dir_name = os.path.join(self.dir,'label_'+str(cl))
+            ServiceFuncs.preparing_folder(dir_name, clear=clear)
+
+        noise_name = os.path.join(self.dir,'noise')
+        ServiceFuncs.preparing_folder(noise_name, clear=clear)
+        logger.debug('Folders for sorted data created')
+
 
 
     def create_newpath(self):
@@ -122,6 +128,7 @@ class Clustering:
         for cl in range(self.num_clusters):
             self.df.loc[self.df['label'] == cl, 'path'] = os.path.join(self.dir,'label_'+str(cl))
         self.df.loc[self.df['label'] == -1, 'path'] = os.path.join(self.dir,'noise')
+        logger.debug('New paths added')
 
 
     def copy_files(self):
@@ -139,8 +146,11 @@ class Clustering:
                     subprocess.run(['cp', '-u', row['oldpath'], row['path']], check=True)
                 except subprocess.CalledProcessError as e:
                     print(f'Error during copying {row['oldpath']} → {row['path']}: {e}')
+                    logger.error(f'Error during copying {row['oldpath']} → {row['path']}: {e}')
             else:
                 print(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
+                logger.error(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
+        logger.debug('Files copied to the new folders')
         
     def sort_files(self):
         """
@@ -177,11 +187,8 @@ class Clustering:
         -----
         A scatter plot of the clustered data with noise in gray and clusters in color.
         """
-        
-        df_features, _= ServiceFuncs.split_into_two(df)
-        features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, 'PCA+UMAP2D')
-        labels, n_clusters = self.clustering_HDBSCAN(features_processed)
-        print(f'Found {n_clusters} clusters (2D)')
+        features_processed, labels, n_clusters = self.visdata_preparation(df)
+
         plt.figure(figsize=(10, 8))
         palette = plt.get_cmap('tab10')
 
@@ -195,10 +202,22 @@ class Clustering:
         plt.xlabel('UMAP-1 component')
         plt.ylabel('UMAP-2  component')
 
-        fig_dir = os.path.join(os.getcwd(), 'figures')
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
+        self.saving_figs(filename)
 
+        plt.show()
+
+    def visdata_preparation(self, df):
+
+        df_features, _= DBFuncs.split_into_two(df)
+        features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, 'PCA+UMAP2D')
+        labels, n_clusters = self.clustering_HDBSCAN(features_processed)
+        print(f'Found {n_clusters} clusters (2D)')
+        logger.info(f'Visualization. Found {n_clusters} clusters (2D)')
+        return features_processed, labels, n_clusters
+
+    def saving_figs(self, filename):
+
+        fig_dir = os.path.join(os.getcwd(), 'figures')
         default_name = 'clusters'
         if not filename:
             filename = default_name
@@ -206,6 +225,4 @@ class Clustering:
         file_pdf = os.path.join(fig_dir, filename+'.pdf')
         plt.savefig(file_pdf, format='pdf')
         plt.savefig(file_png, format='png', dpi=300)
-
-        plt.show()
 
