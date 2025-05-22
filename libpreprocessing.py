@@ -8,7 +8,7 @@
 
 
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.pipeline import Pipeline
 import umap
 import pandas as pd
@@ -44,21 +44,52 @@ class FeaturesPreprocessing:
             Stored copy or reference to the input DataFrame.
     """
 
+    def __init__(self, df, config=None, copy=False):
 
-    def __init__(self, df, copy=False):
+        self.df = df.copy() if copy else df
 
-        self.models = {
-            'pca': PCA(n_components=0.95, svd_solver='full'),
-            'scaler': StandardScaler(),
-            'umapnd': umap.UMAP(n_components=20, min_dist=0.1, metric='cosine'),
-            'umap2d': umap.UMAP(n_components=2, min_dist=0.1, metric='cosine')
+        self.model_registry = {
+            'Normalizer': Normalizer,
+            'StandardScaler': StandardScaler,
+            'PCA': PCA,
+            'UMAP': umap.UMAP,
+            }
+        
+        self.default_params = {
+            'normalizer': {'type': 'Normalizer', 'params': {}},
+            'standardscaler': {'type': 'StandardScaler', 'params': {}},
+            'scaler': {'type': 'StandardScaler', 'params': {}},
+            'pca': {'type': 'PCA', 'params': {'n_components': 0.95, 'svd_solver': 'full'}},
+            'umapnd': {'type': 'UMAP', 'params': {'n_components': 20, 'min_dist': 0.1, 'metric': 'cosine'}},
+            'umap2d': {'type': 'UMAP', 'params': {'n_components': 2, 'min_dist': 0.1, 'metric': 'cosine'}}
         }
-        if copy:
-            self.df = df.copy()
-        else:
-            self.df = df
 
-    def preproccessing(self, df, pipe_str): #pipe_str='PCA+UMAP+..'
+
+    def _init_model(self, model_type: str, params: dict):
+        if model_type not in self.model_registry:
+            logger.error(ValueError(f'Unknown model: {model_type}'))
+            raise ValueError(f'Unknown model: {model_type}')
+        logger.info(f'Initialize model {model_type}')
+        return self.model_registry[model_type](**params)
+    
+
+    def build_pipeline(self, pipe_str: str, params: dict ={}):
+        models = pipe_str.lower().split('+')
+        steps = []
+        for name in models:
+            if name not in self.default_params:
+                logger.error(ValueError(f'Model config for "{name}" not found'))
+                raise ValueError(f'Model config for "{name}" not found')
+            if name not in params:
+                model_cfg = self.default_params[name]['params']
+            else:
+                model_cfg = params[name]
+            model_type = self.default_params[name]['type']
+            model = self._init_model(model_type, model_cfg)
+            steps.append((name, model))
+        return Pipeline(steps)
+
+    def preproccessing(self, df, pipe_str): #pipe_str='PCA+UMAPnd+..'
         """
         Applies a sequence of preprocessing transformations to the feature data.
 
@@ -80,19 +111,11 @@ class FeaturesPreprocessing:
         KeyError
             If the pipeline string contains unknown model names.
         """
-        logger.info(f'Preprocessing launched wtih "{pipe_str}" pipeline')
-        models = pipe_str.lower().split('+')
-        pipes = []
-        for m in models:
-            pipes.append((m, self.models[m]))
-        if df.size:
-            pipe = Pipeline(pipes)
-            results = pipe.fit_transform(df)
-            logger.debug('Preprocessing finishes successfully.')
-            return results
-        else:
-            logger.error('Something goes wrong')
+        logger.info(f'Preprocessing launched with "{pipe_str}" pipeline')
+        if df.size == 0:
             return None
+        pipe = self.build_pipeline(pipe_str)
+        return pipe.fit_transform(df)
         
     def wrapper_preprop(self, df, pipe_str):
 
