@@ -9,7 +9,7 @@
 import os
 import logging
 from minteractive import*
-from mclusterization import Logg
+from mclustering import Logg
 
 logger = logging.getLogger(__name__)
 

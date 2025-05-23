@@ -8,7 +8,7 @@
 
 import os
 import logging
-from mclusterization import*
+from mclustering import*
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def main():
             info_path=info_path,
             filter_mixed=filter_mixed,
             name_pattern=name_pattern,
-            extra_params={'file_to_write': default_filename}
+            extra_params={'file_to_read': default_filename} #{'file_to_write': default_filename}
         )
     
     logger.info('Features extracted successfully')
@@ -73,19 +73,21 @@ def main():
 
     print('Clusterization')
     logger.info('Clusterization')
-    clusters = Clustering(processed)
+    model_type = 'dbscan'
+    params = {'eps': 0.9, 'min_samples': 5, 'metric': 'euclidean'}
+    clusters = Clustering(processed, results_dir)
     df_features, _ = DBFuncs.split_into_two(processed)
-    _, num_clusters = clusters.clustering_HDBSCAN(df_features)
+    _, num_clusters = clusters.doclustering(df_features, model_type=model_type, params=params)
     print(f'Number of clusters 20D: {num_clusters}')
     clusters.update_database()
-    clusters.sort_files()
+    clusters.organize_files_by_cluster()
 
     logger.info(f'Saving database')
     file_to_write = default_filename+'_clustered'
     DBFuncs.save_database(clusters.df, file_to_write=file_to_write)
 
     logger.info('Visualization')
-    clusters.visualize_HDBSCAN(features.database)
+    clusters.visualize(features.database, model_type=model_type, params=params)
 
 
 if __name__ == '__main__':

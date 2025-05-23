@@ -7,7 +7,7 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 import os
-from mclusterization import*
+from mclustering import*
 
 import logging
 logger = logging.getLogger(__name__)

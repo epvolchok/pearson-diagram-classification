@@ -9,11 +9,15 @@
 
 import os
 import subprocess
+import shutil
 
 import hdbscan
+from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
 
-from libservice import ServiceFuncs, DBFuncs
-from libpreprocessing import FeaturesPreprocessing
+from .libservice import ServiceFuncs, DBFuncs
+from .libpreprocessing import FeaturesPreprocessing
+
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('qtagg')
@@ -58,19 +62,52 @@ class Clustering:
         Directory path where clustered files will be organized (default is './processed').
     """
 
-    def __init__(self, df, copy=False, clear=True):
+    def __init__(self, df, results_dir, copy=False, clear=True):
+
+        self.cluster_algorithms = {
+            'HDBSCAN': hdbscan.HDBSCAN,
+            'DBSCAN': DBSCAN,
+            'KMeans': KMeans
+        }
+
+        self.default_params = {
+            'hdbscan': {'type': 'HDBSCAN', 'params': {'min_cluster_size': 15, 'min_samples': 5, 'metric': 'euclidean'}},
+            'kmeans': {'type': 'KMeans', 'params': {'n_clusters': 5, 'random_state': 42}},
+            'dbscan': {'type': 'DBSCAN', 'params': {'eps': 0.5, 'min_samples': 5, 'metric': 'euclidean'}}
+        }
 
         if copy:
             self.df = df.copy()
         else:
             self.df = df
+
         self.num_clusters = 0
-        self.labels = []
-        self.dir = os.path.join(os.getcwd(), 'processed')
+        self.labels = None
+
+        self.dir = results_dir #os.path.join(os.getcwd(), 'processed')
         ServiceFuncs.preparing_folder(self.dir, clear=clear)
 
+    def _init_model(self, model_type: str, params: dict):
+        if model_type not in self.cluster_algorithms:
+            logger.error(ValueError(f'Unknown model: {model_type}'))
+            raise ValueError(f'Unknown model: {model_type}')
+        logger.info(f'Initialize model {model_type}')
+        return self.cluster_algorithms[model_type](**params)
+    
+    def setup_clustering(self, model, params: dict ={}):
+        if model not in self.default_params:
+            logger.error(ValueError(f'Model config for "{model}" not found'))
+            raise ValueError(f'Model config for "{model}" not found')
+        if model not in params:
+                model_cfg = self.default_params[model]['params']
+        else:
+            model_cfg = params[model]
+        model_type = self.default_params[model]['type']
+        model_clustering = self._init_model(model_type, model_cfg)
+        logger.info(f'Clustering model: {model_type}, params: {model_cfg}')
+        return model_type, model_clustering
 
-    def clustering_HDBSCAN(self, df):
+    def doclustering(self, df, model_type, params: dict ={}):
         """
         Applies HDBSCAN clustering to the given feature matrix.
 
@@ -86,9 +123,16 @@ class Clustering:
         num_clusters : int
             Number of clusters detected (excluding noise).
         """
-        logger.info('Clusterization with HDBSCAN')
-        clusterer = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=5, metric='euclidean')
-        self.labels = clusterer.fit_predict(df)
+        model, model_clustering = self.setup_clustering(model_type, params)
+        logger.info(f'Clusterization with {model}')
+        
+        
+        if model == 'HDBSCAN':
+            self.labels = model_clustering.fit_predict(df)
+        else:
+            cluster = model_clustering.fit(df)
+            self.labels = cluster.labels_
+
         self.num_clusters = len(set(self.labels)) - (1 if -1 in self.labels else 0)
         logger.info(f'Number of clusters: {self.num_clusters}')
         return self.labels, self.num_clusters
@@ -99,7 +143,6 @@ class Clustering:
         """
         try:
             self.df.insert(1, 'label', self.labels)
-            self.df.head()
             logger.debug('Insertion of cluster labels to the database.')
         except Exception as err:
             logger.error(f'Labels can not be added to the database: {err}')
@@ -110,7 +153,7 @@ class Clustering:
         The directories are created under `self.dir` if they do not already exist.
         """
         for cl in range(self.num_clusters):
-            dir_name = os.path.join(self.dir,'label_'+str(cl))
+            dir_name = os.path.join(self.dir, 'label_'+str(cl))
             ServiceFuncs.preparing_folder(dir_name, clear=clear)
 
         noise_name = os.path.join(self.dir,'noise')
@@ -126,8 +169,8 @@ class Clustering:
         """
          
         for cl in range(self.num_clusters):
-            self.df.loc[self.df['label'] == cl, 'path'] = os.path.join(self.dir,'label_'+str(cl))
-        self.df.loc[self.df['label'] == -1, 'path'] = os.path.join(self.dir,'noise')
+            self.df.loc[self.df['label'] == cl, 'path'] = os.path.join(self.dir, 'label_'+str(cl))
+        self.df.loc[self.df['label'] == -1, 'path'] = os.path.join(self.dir, 'noise')
         logger.debug('New paths added')
 
 
@@ -143,16 +186,17 @@ class Clustering:
             newpath = row['path']
             if isinstance(oldpath, str) and isinstance(newpath, str):
                 try:
-                    subprocess.run(['cp', '-u', row['oldpath'], row['path']], check=True)
+                    shutil.copy2(oldpath, newpath)
+                    
                 except subprocess.CalledProcessError as e:
-                    print(f'Error during copying {row['oldpath']} → {row['path']}: {e}')
-                    logger.error(f'Error during copying {row['oldpath']} → {row['path']}: {e}')
+                    print(f'Error during copying {oldpath} -> {newpath}: {e}')
+                    logger.warning(f'Error during copying {oldpath} -> {newpath}: {e}')
             else:
                 print(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
-                logger.error(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
+                logger.warning(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
         logger.debug('Files copied to the new folders')
         
-    def sort_files(self):
+    def organize_files_by_cluster(self):
         """
         Organizes image files into directories by cluster.
 
@@ -169,7 +213,7 @@ class Clustering:
         self.df.drop('oldpath', axis=1, inplace=True)
 
 
-    def visualize_HDBSCAN(self, df, filename=None):
+    def visualize(self, df, model_type, params={}, filename=None):
         """
         Reduces the feature space to 2D using PCA + UMAP, applies HDBSCAN clustering, and plots the results.
 
@@ -180,14 +224,14 @@ class Clustering:
 
         Saves
         -----
-        './figures/clusterization_triggered.pdf' : PDF version of the cluster plot
-        './figures/clusterization_triggered.png' : PNG version (300 DPI)
+        './figures/clusterization.pdf' : PDF version of the cluster plot
+        './figures/clusterization.png' : PNG version (300 DPI)
 
         Shows
         -----
         A scatter plot of the clustered data with noise in gray and clusters in color.
         """
-        features_processed, labels, n_clusters = self.visdata_preparation(df)
+        features_processed, labels, n_clusters = self.visdata_preparation(df, model_type, params)
 
         plt.figure(figsize=(10, 8))
         palette = plt.get_cmap('tab10')
@@ -206,11 +250,11 @@ class Clustering:
 
         plt.show()
 
-    def visdata_preparation(self, df):
+    def visdata_preparation(self, df, model_type, params={}):
 
         df_features, _= DBFuncs.split_into_two(df)
         features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, 'PCA+UMAP2D')
-        labels, n_clusters = self.clustering_HDBSCAN(features_processed)
+        labels, n_clusters = self.doclustering(features_processed, model_type, params)
         print(f'Found {n_clusters} clusters (2D)')
         logger.info(f'Visualization. Found {n_clusters} clusters (2D)')
         return features_processed, labels, n_clusters

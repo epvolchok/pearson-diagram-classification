@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.pipeline import Pipeline
 import umap
 import pandas as pd
-from libservice import ServiceFuncs, DBFuncs
+from .libservice import DBFuncs
 
 import logging
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class FeaturesPreprocessing:
             Stored copy or reference to the input DataFrame.
     """
 
-    def __init__(self, df, config=None, copy=False):
+    def __init__(self, df, copy=False):
 
         self.df = df.copy() if copy else df
 
@@ -57,7 +57,6 @@ class FeaturesPreprocessing:
         
         self.default_params = {
             'normalizer': {'type': 'Normalizer', 'params': {}},
-            'standardscaler': {'type': 'StandardScaler', 'params': {}},
             'scaler': {'type': 'StandardScaler', 'params': {}},
             'pca': {'type': 'PCA', 'params': {'n_components': 0.95, 'svd_solver': 'full'}},
             'umapnd': {'type': 'UMAP', 'params': {'n_components': 20, 'min_dist': 0.1, 'metric': 'cosine'}},

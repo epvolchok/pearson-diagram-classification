@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from functools import cached_property
 from dataclasses import dataclass, field
 
-from libservice import ServiceFuncs, DBFuncs
+from .libservice import ServiceFuncs, DBFuncs
 
 import logging
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@
 
 import os
 import pandas as pd
-from mclusterization import*
+from mclustering import*
 from .libinteractive import InputManager, PathManager
 
 import logging
@@ -300,7 +300,7 @@ class ProcessingPipeline:
         _, num_clusters = clusters.clustering_HDBSCAN(df_features)
         print(f'Number of clusters 20D: {num_clusters}')
         clusters.update_database()
-        clusters.sort_files()
+        clusters.organize_files_by_cluster()
         return clusters
     
     @staticmethod
