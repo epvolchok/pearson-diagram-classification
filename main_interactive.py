@@ -9,7 +9,7 @@
 import os
 import logging
 from minteractive import*
-from libservice import ServiceFuncs, Logg
+from mclusterization import Logg
 
 logger = logging.getLogger(__name__)
 

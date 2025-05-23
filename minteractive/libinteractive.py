@@ -7,10 +7,7 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 import os
-from libpreprocessing import FeaturesPreprocessing
-from libclustering import Clustering
-from libfeatures import ResNetFeatures
-from libservice import ServiceFuncs, DBFuncs
+from mclusterization import*
 
 import logging
 logger = logging.getLogger(__name__)
