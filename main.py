@@ -8,11 +8,7 @@
 
 import os
 import logging
-from minteractive import*
-from libpreprocessing import FeaturesPreprocessing
-from libclustering import Clustering
-from libfeatures import ResNetFeatures
-from libservice import ServiceFuncs, DBFuncs, Logg
+from mclusterization import*
 
 logger = logging.getLogger(__name__)
 
