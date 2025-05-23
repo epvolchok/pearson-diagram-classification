@@ -296,7 +296,7 @@ class ResNetFeatures:
         print(final_df.shape[1])
         return final_df
     
-    def info_on_features(self, visualize=False, title=''):
+    def info_on_features(self, df=None, visualize=False, title=''):
         """
         Prints statistics on extracted features and optionally visualizes variance distribution.
 
@@ -307,6 +307,9 @@ class ResNetFeatures:
         title : str
             Optional title for the plot.
         """
+        if not df:
+            df =self.database
+            
         df_features, _ = DBFuncs.split_into_two(self.database)
 
         distances = pairwise_distances(df_features, metric='cosine')

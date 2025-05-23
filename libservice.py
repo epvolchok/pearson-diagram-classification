@@ -52,12 +52,12 @@ class ServiceFuncs:
     """
 
     def __init__(self):
-        ServiceFuncs.init_error()
+        ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def init_error():
-        logger.error(RuntimeError(f'This class [{__class__.__name__}] can not be instantiate.'))
-        raise RuntimeError(f'This class [{__class__.__name__}] can not be instantiate.')
+    def init_error(name):
+        logger.error(RuntimeError(f'This class [{name}] can not be instantiate.'))
+        raise RuntimeError(f'This class [{name}] can not be instantiate.')
 
     @staticmethod
     def check_extension(file_path, allowed_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
@@ -193,7 +193,7 @@ class DBFuncs:
     This class is not meant to be instantiated.
     """
     def __init__(self):
-        ServiceFuncs.init_error()
+        ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
     def load_info(info_path):
@@ -315,3 +315,56 @@ class DBFuncs:
         excluded_part = df.loc[:, excluded_columns]
         return df_features, excluded_part
 
+class Logg:
+
+    def __init__(self):
+        ServiceFuncs.init_error(__class__.__name__)
+
+    @staticmethod
+    def get_log_filename(log_dir='logs', log_name=None):
+        """
+        Determines a log file name.
+
+        Parameters
+        ----------
+        log_dir : str
+            Directory where log files are stored.
+        log_name : str or None
+            Custom log file name (e.g., 'log_experiment42.log').
+            If None, a new log name will be generated as 'log_XX.log'.
+
+        Returns
+        -------
+        str
+            Full path to the log file.
+        """
+        os.makedirs(log_dir, exist_ok=True)
+
+        if log_name:
+            if not log_name.endswith('.log'):
+                log_name += '.log'
+            return os.path.join(log_dir, log_name)
+
+        # Get existing log files
+        existing_logs = [f for f in os.listdir(log_dir) if f.startswith('log_') and f.endswith('.log')]
+        count = len(existing_logs)
+        next_num = count + 1
+
+        if count < 10:
+            name = f'log_{next_num:02d}.log'  # log_01.log, log_02.log, ...
+        else:
+            name = f'log_{next_num}.log'      # log_11.log, log_12.log, ...
+
+        return os.path.join(log_dir, name)
+
+    @staticmethod
+    def setup_logging(log_file='pipeline.log'):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            handlers=[
+                logging.FileHandler(log_file, mode='w'),
+                #logging.StreamHandler()
+            ]
+        )

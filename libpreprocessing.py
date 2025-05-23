@@ -86,10 +86,11 @@ class FeaturesPreprocessing:
                 model_cfg = params[name]
             model_type = self.default_params[name]['type']
             model = self._init_model(model_type, model_cfg)
+            logger.info(f'Model: {model_type}, params: {model_cfg}')
             steps.append((name, model))
         return Pipeline(steps)
 
-    def preproccessing(self, df, pipe_str): #pipe_str='PCA+UMAPnd+..'
+    def preproccessing(self, df, pipe_str, params={}): #pipe_str='PCA+UMAPnd+..'
         """
         Applies a sequence of preprocessing transformations to the feature data.
 
@@ -114,10 +115,10 @@ class FeaturesPreprocessing:
         logger.info(f'Preprocessing launched with "{pipe_str}" pipeline')
         if df.size == 0:
             return None
-        pipe = self.build_pipeline(pipe_str)
+        pipe = self.build_pipeline(pipe_str, params)
         return pipe.fit_transform(df)
         
-    def wrapper_preprop(self, df, pipe_str):
+    def wrapper_preprop(self, df, pipe_str, params={}):
 
         """
         Applies preprocessing to the feature part of a DataFrame while preserving metadata.
@@ -145,7 +146,7 @@ class FeaturesPreprocessing:
         """
 
         df_features, excluded_part = DBFuncs.split_into_two(df)
-        processed = self.preproccessing(df_features, pipe_str)
+        processed = self.preproccessing(df_features, pipe_str, params)
         df_processed = pd.DataFrame(
             processed,
             columns=[f'feat_{i}' for i in range(processed.shape[1])]

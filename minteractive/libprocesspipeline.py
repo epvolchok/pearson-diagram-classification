@@ -7,228 +7,28 @@
 #http://www.apache.org/licenses/LICENSE-2.0
 
 import os
+import pandas as pd
 from libpreprocessing import FeaturesPreprocessing
 from libclustering import Clustering
 from libfeatures import ResNetFeatures
 from libservice import ServiceFuncs, DBFuncs
+from .libinteractive import InputManager, PathManager
 
 import logging
 logger = logging.getLogger(__name__)
 
-class InputManager:
-    def __init__(self):
-        ServiceFuncs.init_error()
-    
-    @staticmethod
-    def input_wrapper(message):
-        try:
-            user_input = input(message)
-            return user_input
-        except KeyboardInterrupt:
-            logger.error('KeyboardInterrupt')
-            print('\nInterrupted by user.')
-            return
-        
-    @staticmethod
-    def welcome_message():
-        """
-        Prints a welcome message with initial instructions for placing image data.
-        """
-
-        message = 'Welcome to the script! \n' + \
-        'First place your images in a separate folder (into "./images/") named according to the template: \n \
-        "images_(your_specification)"'
-        print(message)
-        logger.info('Script started')
-
-    @staticmethod
-    def get_bool(prompt: str)-> bool: 
-        """
-        Prompts the user for a True/False response.
-
-        Parameters
-        ----------
-        prompt : str
-            Prompt text for user input.
-
-        Returns
-        -------
-        bool
-            Boolean interpretation of the user's input.
-
-        Raises
-        ------
-        KeyError
-            If input is not 'true' or 'false' (case-insensitive).
-        """
-        while True:
-            
-            answ = InputManager.input_wrapper(prompt).lower()
-            if answ:
-                try:
-                    return {'true': True, 'false': False}[answ]
-                except KeyError as e:
-                    print(f'Invalid input, please enter True or False! {e}')
-                    logger.error(f'Invalid input, please enter True or False! {e}')
-            else:
-                return True
-                
-
-    @staticmethod
-    def filter_mixed_freq(name_pattern):
-        """
-        Asks the user whether to filter out mixed-frequency data.
-
-        Parameters
-        ----------
-        name_pattern : str
-            Default regular expression used to match dataset names.
-
-        Returns
-        -------
-        filter_mixed : bool
-            Whether to apply frequency filtering.
-        name_pattern : str
-            Possibly updated regex pattern provided by the user.
-        """
-
-        filter_mixed = InputManager.get_bool('Would you like to filter mixed frequencies? (True or False) ')
-        logger.info(f'Filter mixed frequencies: {filter_mixed}')
-        if filter_mixed:
-            print(f'Check the name pattern: {name_pattern}')
-            np_input = InputManager.input_wrapper('Change if it is needed or press "Enter": ').strip()
-            if np_input:
-                name_pattern = np_input
-        logger.info(f'Name pattern: {name_pattern}')
-        return filter_mixed, name_pattern
-
-
-
-class PathManager:
-    def __init__(self):
-        ServiceFuncs.init_error()
-    
-    @staticmethod
-    def preparations():
-        """
-        Prepares required working directories and gathers the user’s image folder name.
-
-        Returns
-        -------
-        input_imags : str
-            Name of the user-specified image subdirectory.
-        default_filename : str
-            Suggested default filename for saving feature data.
-        """
-
-        base_dir_names = ['images', 'processed', 'figures', 'data', 'results', 'logs']
-        cwd = os.getcwd()
-        message = 'Use "processed" folder for processed images \n' + \
-        '"data" folder for info metadata \n' + \
-        '"figures" and "results" for graphic and data results, respectively.'
-        print(message)
-        
-        PathManager.create_base_dirs(*base_dir_names)
-
-        input_imags = PathManager.images_folder()
-        default_filename = PathManager.create_results_dir(input_imags)
-        
-        return input_imags, default_filename
-    
-    @staticmethod
-    def create_base_dirs(*args):
-        cwd = os.getcwd()
-        for dirname in args:
-            dirname = os.path.join(cwd, dirname)
-            ServiceFuncs.preparing_folder(dirname, clear=False)
-        logger.info('Base directories checked or created')
-    
-    @staticmethod
-    def images_folder():
-        cwd = os.getcwd()
-        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
-        isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
-
-        while not isdir:
-            print(f'Wrong folder name: {input_imags}. Try again.')
-            logger.debug(f'Wrong folder name: {input_imags}')
-            input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
-            isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
-
-        return input_imags
-    
-    @staticmethod
-    def create_results_dir(input_imags):
-        cwd = os.getcwd()
-        specification = ServiceFuncs.input_name(input_imags)
-        results_dir = os.path.join(cwd, 'processed', 'processed_'+specification)
-        default_filename = os.path.join(cwd, 'results', 'pearson_diagram_data_'+specification)
-        logger.info(f'Source images: {input_imags} Results: {results_dir, default_filename}')
-
-        clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
-        ServiceFuncs.preparing_folder(results_dir, clear=clear)
-        logger.info(f'Clearing results folder: {clear}')
-        return default_filename
-
-    @staticmethod
-    def get_path(message, default_path):
-        """
-        Gets a file path from the user, or uses the default if none is entered.
-
-        Parameters
-        ----------
-        message : str
-            Prompt for the user.
-        default_path : str
-            Default path to return if user provides no input.
-
-        Returns
-        -------
-        str
-            Final path.
-        """
-
-        file_path = InputManager.input_wrapper(message)
-        file_path = file_path if file_path else default_path
-        return file_path
-    
-
-    
-    @staticmethod
-    def saving_database(df, default_filename, message, suf):
-        """
-        Prompts the user to save the DataFrame to a file with optional suffix.
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Data to be saved.
-        default_filename : str
-            Default file base name.
-        message : str
-            Prompt shown to the user.
-        suf : str
-            Default suffix to append to the filename.
-        """
-        logger.info(f'Saving database')
-        file_to_write = InputManager.input_wrapper(message)
-        suffix = InputManager.input_wrapper('or/and enter a suffix to the filename: ') or suf
-        file_to_write = ServiceFuncs.create_name(default_filename, file_to_write=file_to_write, suffix=suffix)
-        DBFuncs.save_database(df, file_to_write=file_to_write)
-
-class ProcessingPipeline:
+class FeatureManager:
     """
-    This class serves as a high-level command-line wrapper around the functionality defined
-    in modules like `libfeatures`, `libpreprocessing`, and `libclustering`. It guides the
-    user through a series of prompts to configure and execute data processing operations.
+    This class serves as a high-level command-line wrapper around the functionality of `libfeatures`.
+    It rules the process of features extraction from images or loading from a file.
 
     This class is not intended to be instantiated.
     """
     def __init__(self):
-        ServiceFuncs.init_error()
+        ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def get_features(input_imags, info_path, default_filename, name_pattern):
+    def get_features(input_imags: str, info_path: str, default_filename: str, name_pattern: str):
         """
         Asks the user whether to extract new features or read from file.
 
@@ -254,13 +54,13 @@ class ProcessingPipeline:
         logger.info('Getting features')
         
         while True:
-            choice = InputManager.input_wrapper('[1/2]: ').strip()
+            choice = InputManager.input_wrapper('[1/2] > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
-                features = ProcessingPipeline.extract_features(input_imags, info_path, default_filename, name_pattern)
+                features = FeatureManager.extract_features(input_imags, info_path, default_filename, name_pattern)
                 break
             elif choice == '2':
-                features = ProcessingPipeline.read_features(input_imags, info_path, default_filename, name_pattern)
+                features = FeatureManager.read_features(input_imags, info_path, default_filename, name_pattern)
                 break
             elif choice == 'break':
                 break
@@ -290,7 +90,7 @@ class ProcessingPipeline:
         ResNetFeatures
             Object containing the extracted feature database.
         """
-        message = f'Enter a file name to write extracted features (or press "Enter" for default "{default_filename}"): '
+        message = f'Enter a file name to write extracted features (or press "Enter" for default "{default_filename}") > '
         file_to_write = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
         cwd = os.getcwd()
@@ -331,7 +131,7 @@ class ProcessingPipeline:
             Object containing the loaded feature database.
         """
 
-        message = f'Enter a file name to read from (or press "Enter" for default "{default_filename}"): '
+        message = f'Enter a file name to read from (or press "Enter" for default "{default_filename}") > '
         file_to_read = PathManager.get_path(message, default_filename)
         filter_mixed, name_pattern = InputManager.filter_mixed_freq(name_pattern)
         cwd = os.getcwd()
@@ -349,7 +149,12 @@ class ProcessingPipeline:
         )
         logger.info('Features loaded successfully')
         return features
+
+class ProcessingPipeline:
     
+    def __init__(self):
+        ServiceFuncs.init_error(__class__.__name__)
+
     @staticmethod
     def run_processing(features, default_filename):
         """
@@ -367,12 +172,12 @@ class ProcessingPipeline:
         print(message)
         logger.info('Processing running')
         while True:
-            choice = InputManager.input_wrapper('[1/2]: ').strip()
+            choice = InputManager.input_wrapper('[1/2] > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
                 ProcessingPipeline.standard_algorithm(features, default_filename)
             elif choice == '2':
-                print('This part has not been implemented yet. Use 1 or break.')
+                ProcessingPipeline.choose_block(features, default_filename)
             elif choice == 'break':
                 break
             else:
@@ -410,14 +215,14 @@ class ProcessingPipeline:
 
         features = ProcessingPipeline.filtration(features)
 
-        message = f'Enter a file name to save the filtered data (or press "Enter" to use default name): '
+        message = f'Enter a file name to save the filtered data (or press "Enter" to use default name) > '
         PathManager.saving_database(features.database, default_filename, message, suf='_filtered')
 
         processed = ProcessingPipeline.run_preprocessing(features, 'PCA+UMAPND')
 
         clusters = ProcessingPipeline.run_clusterization(processed)
 
-        message = 'Enter a file name to save the clustered data (or press "Enter" to use default name): '
+        message = 'Enter a file name to save the clustered data (or press "Enter" to use default name) > '
         PathManager.saving_database(clusters.df, default_filename, message, suf='_clustered')
 
         # Visualization
@@ -446,7 +251,7 @@ class ProcessingPipeline:
         return features
     
     @staticmethod
-    def run_preprocessing(features, pipe_str='PCA+UMAPND'):
+    def run_preprocessing(features, pipe_str='PCA+UMAPND', params={}):
         """
         Applies a sequence of dimensionality reduction steps to the feature matrix.
 
@@ -465,7 +270,14 @@ class ProcessingPipeline:
         print('Preprocessing')
         logger.info('Preprocessing')
         preprop = FeaturesPreprocessing(features)
-        processed = preprop.wrapper_preprop(features.database, pipe_str)
+        if isinstance(features, ResNetFeatures):
+            df = features.database
+        elif isinstance(features, pd.DataFrame):
+            df = features
+        else:
+            logger.error(ValueError('(features) is non-known object'))
+            raise ValueError('(features) is non-known object')
+        processed = preprop.wrapper_preprop(df, pipe_str, params)
         return processed
     
     @staticmethod
@@ -493,5 +305,88 @@ class ProcessingPipeline:
         clusters.update_database()
         clusters.sort_files()
         return clusters
+    
+    @staticmethod
+    def choose_block(features, default_filename):
 
+        message = 'Choose a block of data processing: \n' + \
+        '1. preprocessing: scaling and dimensions reduction \n' + \
+        '2. clusterization of processed data (compress dimensions first!) \n' + \
+        '3. analysis of obtained results (haven\'t implemented)\n' + \
+        'or enter "break" to return to the higher level'
 
+        print(message)
+
+        while True:
+            choice = InputManager.input_wrapper('[1/2/3] >  ').strip()
+            logger.info(f'Choice: {choice}')
+            if choice == '1':
+                ProcessingPipeline.preprocessing_setup(features, default_filename)
+            elif choice == '2':
+                print('This part has not been implemented yet. Use 1 or break.')
+            elif choice == '3':
+                print('This part has not been implemented yet. Use 1 or break.')
+            elif choice == 'break':
+                break
+            else:
+                print('Invalid input. \n Please enter 1, 2 or 3 (or break).')
+                logger.debug('Invalid input.')
+
+    @staticmethod
+    def preprocessing_setup(features, default_filename):
+        message = 'To preprocess, enter a pipeline in the form \n' + \
+        '"pca+umapnd+<...>". \n' + \
+        'You can choose any (reasonable) combinations of \n' + \
+        'sklearn.Normalizer() - use "normalizer" \n' + \
+        'sklearn.StandartScalar() - use "scalar" \n' + \
+        'sklearn.PCA() - use "pca" \n' + \
+        'umap.UMAP() - use "umapnd". \n' + \
+        'You will be able to set parameters for any of these funcs (enter "params") \n' + \
+        'or use default parameters: \n' + \
+        'default parameters: \n' + \
+        f'{FeaturesPreprocessing(features).default_params}.'
+
+        print(message)
+
+        while True:
+            pipeline = InputManager.input_wrapper('Enter a pipeline: ').strip()
+            logger.info(f'Pipeline: {pipeline}')
+            if pipeline == 'break':
+                break
+
+            if InputManager.get_bool('Would you like to enter params? '):
+                params = ProcessingPipeline.get_processing_params(pipeline)
+            else:
+                params = {}
+            processed = ProcessingPipeline.run_preprocessing(features, pipeline, params)
+
+            ProcessingPipeline.to_deal_results(pipeline, processed, default_filename)
+
+    @staticmethod
+    def to_deal_results(pipeline, processed, default_filename):
+
+        while True:
+            choice = InputManager.input_wrapper('Enter "save", "print", "break" or "continue" to try again > ').strip()
+            logger.info(f'Choice: {choice}')
+            if choice == 'save':
+                message = f'Enter a file name to save data (or press "Enter" to use default_name: {default_filename}) > '
+                PathManager.saving_database(processed, default_filename, message, suf='_processed')
+            elif choice == 'print':
+                visualize = InputManager.get_bool('Would you like to plot histogram of features varience? > ')
+                ResNetFeatures.info_on_features(processed, visualize, title=pipeline)
+            elif choice == 'break':
+                break
+            else:
+                print('Invalid input. \n Try again!')
+                logger.debug('Invalid input.')
+
+    @staticmethod
+    def get_processing_params(pipeline):
+        print(f'Enter parameters for every or some of steps in {pipeline} >')
+        models = pipeline.lower().split('+')
+        params = {}
+        for name in models:
+            param = InputManager.input_dict(f'Enter parameters for {name} (as key=value) > ')
+            if param:
+                params[name] = param
+        return params
