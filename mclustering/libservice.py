@@ -24,31 +24,6 @@ class ServiceFuncs:
 
     This class is not meant to be instantiated.
 
-    Methods
-    -------
-    check_extension(file_path, allowed_extensions)
-        Validates the file extension against allowed types.
-
-    load_info(info_path)
-        Loads and processes observation metadata from a text file.
-
-    extract_observ_data(path, pattern)
-        Extracts observation type and date from a file path using regex.
-
-    save_database(df, file_to_write, kind)
-        Saves a pandas DataFrame to a file in pickle or JSON format.
-
-    read_database(file_to_read, kind)
-        Reads a pandas DataFrame from a file.
-
-    preparing_folder(dir_name, clear)
-        Prepares a directory, optionally clearing its contents.
-
-    split_into_two(df, excluded_columns)
-        Splits a DataFrame into features and metadata parts.
-
-    input_name(input_path, pattern)
-        Extracts a name ID from a path using regex.
     """
 
     def __init__(self):
@@ -60,7 +35,7 @@ class ServiceFuncs:
         raise RuntimeError(f'This class [{name}] can not be instantiate.')
 
     @staticmethod
-    def check_extension(file_path, allowed_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
+    def check_extension(file_path: str, allowed_extensions: tuple = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')) -> bool:
         """
         Check if a file has one of the allowed extensions.
 

@@ -9,7 +9,7 @@
 import os
 import logging
 from mclustering import*
-
+import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 def main():
@@ -46,15 +46,6 @@ def main():
 
     print('Features are extracted/launched!')
 
-    message = 'The standard algorithm: \n' + \
-            '1. Filtration of ResNet features by variance, thershold=1e-5 \n' + \
-            '2. Preprocessing of the filtered features with \n' + \
-            '   - PCA(n_components=0.95, svd_solver=\'full\') \n' + \
-            '   - UMAP(n_components=20, min_dist=0.1, metric=\'cosine\') \n' + \
-            '3. Clusterization \n' + \
-            '- HDBSCAN(min_cluster_size=15, min_samples=5, metric=\'euclidean\') \n' + \
-            '4. Visualization with PCA+UMAP2D+HDBSCAN'
-    print(message)
     logger.info('Standard algorithm launched')
 
     print('Filtration')
@@ -75,19 +66,58 @@ def main():
     logger.info('Clusterization')
     model_type = 'dbscan'
     params = {'eps': 0.9, 'min_samples': 5, 'metric': 'euclidean'}
-    clusters = Clustering(processed, results_dir)
+    clusters_dbscan = Clustering(processed, results_dir, copy=True)
     df_features, _ = DBFuncs.split_into_two(processed)
-    _, num_clusters = clusters.doclustering(df_features, model_type=model_type, params=params)
-    print(f'Number of clusters 20D: {num_clusters}')
-    clusters.update_database()
-    clusters.organize_files_by_cluster()
+    labels_dbscan, num_clusters_dbscan = clusters_dbscan.doclustering(df_features, model_type=model_type, params=params)
+    print(f'Number of clusters DBSCAN: {num_clusters_dbscan}')
+    clusters_dbscan.update_database()
+    clusters_dbscan.organize_files_by_cluster()
 
     logger.info(f'Saving database')
-    file_to_write = default_filename+'_clustered'
-    DBFuncs.save_database(clusters.df, file_to_write=file_to_write)
+    file_to_write = default_filename+'_dbscan'
+    DBFuncs.save_database(clusters_dbscan.df, file_to_write=file_to_write)
 
-    logger.info('Visualization')
-    clusters.visualize(features.database, model_type=model_type, params=params)
+    logger.info('Visualization dbscan')
+    print('Visualization dbscan')
+    clusters_dbscan.scores(clusters_dbscan.df, labels_dbscan)
+    clusters_dbscan.visualize(features.database, model_cluster='DBSCAN', params=params)
+    
+
+    model_type = 'hdbscan'
+    clusters_hdbscan = Clustering(processed, results_dir, copy=True)
+    labels_hdbscan, num_clusters_hdbcan = clusters_hdbscan.doclustering(df_features, model_type=model_type)
+    print(f'Number of clusters HDBSCAN: {num_clusters_hdbcan}')
+    clusters_hdbscan.update_database()
+    clusters_hdbscan.organize_files_by_cluster()
+
+    logger.info(f'Saving database')
+    file_to_write = default_filename+'_hdbscan'
+    DBFuncs.save_database(clusters_hdbscan.df, file_to_write=file_to_write)
+
+    logger.info('Visualization hdbscan')
+    print('Visualization hdbscan')
+    clusters_hdbscan.scores(clusters_hdbscan.df, labels_hdbscan)
+    clusters_hdbscan.visualize(features.database, model_cluster='HDBSCAN', params=params)
+
+    model_type = 'kmeans'
+    clusters_kmeans = Clustering(processed, results_dir, copy=True)
+    labels_kmeans, num_clusters_kmeans = clusters_kmeans.doclustering(df_features, model_type=model_type)
+    print(f'Number of clusters KMeans: {num_clusters_kmeans}')
+    clusters_kmeans.update_database()
+    clusters_kmeans.organize_files_by_cluster()
+
+    logger.info(f'Saving database')
+    file_to_write = default_filename+'_kmeans'
+    DBFuncs.save_database(clusters_kmeans.df, file_to_write=file_to_write)
+
+    logger.info('Visualization kmeans')
+    print('Visualization kmeans')
+    clusters_kmeans.scores(clusters_kmeans.df, labels_kmeans)
+    clusters_dbscan.visualize(features.database, model_cluster='KMeans', params=params)
+
+
+    plt.show()
+    
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ Image processing:
 4. Clustering and sorting images by HDBSCAN
 
 
-<img src="figures/processing.png" width="600">
+<img src="figures/processing.png">
 
 Dependencies: 
 
@@ -30,9 +30,9 @@ For more details see
 
 The example of a diargam is below.
 
-<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width="600">
+<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png">
 
 
 The example of results:
 
-<img src="figures/clusterization.png" width="600">
+<img src="figures/clusterization.png">

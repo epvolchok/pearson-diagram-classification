@@ -14,6 +14,7 @@ import shutil
 import hdbscan
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 from .libservice import ServiceFuncs, DBFuncs
 from .libpreprocessing import FeaturesPreprocessing
@@ -95,9 +96,11 @@ class Clustering:
         return self.cluster_algorithms[model_type](**params)
     
     def setup_clustering(self, model, params: dict ={}):
+        model = model.lower()
         if model not in self.default_params:
             logger.error(ValueError(f'Model config for "{model}" not found'))
             raise ValueError(f'Model config for "{model}" not found')
+        
         if model not in params:
                 model_cfg = self.default_params[model]['params']
         else:
@@ -213,7 +216,7 @@ class Clustering:
         self.df.drop('oldpath', axis=1, inplace=True)
 
 
-    def visualize(self, df, model_type, params={}, filename=None):
+    def visualize(self, df, model_cluster='HDBSCAN', model_preprop='PCA+UMAP2D', params={}, filename=None):
         """
         Reduces the feature space to 2D using PCA + UMAP, applies HDBSCAN clustering, and plots the results.
 
@@ -231,7 +234,7 @@ class Clustering:
         -----
         A scatter plot of the clustered data with noise in gray and clusters in color.
         """
-        features_processed, labels, n_clusters = self.visdata_preparation(df, model_type, params)
+        features_processed, labels, _ = self.visdata_preparation(df, model_cluster, model_preprop, params)
 
         plt.figure(figsize=(10, 8))
         palette = plt.get_cmap('tab10')
@@ -242,19 +245,19 @@ class Clustering:
             plt.scatter(features_processed[mask, 0], features_processed[mask, 1], s=10, color=color, label=f'Cluster {label}' if label != -1 else 'Noise')
 
         plt.legend()
-        plt.title('PCA + UMAP2D + HDBSCAN: clustering visualization')
+        plt.title(f'{model_preprop} + {model_cluster}: clustering visualization')
         plt.xlabel('UMAP-1 component')
         plt.ylabel('UMAP-2  component')
 
         self.saving_figs(filename)
 
-        plt.show()
 
-    def visdata_preparation(self, df, model_type, params={}):
+
+    def visdata_preparation(self, df, model_cluster='HDBSCAN', model_preprop='PCA+UMAP2D', params={}):
 
         df_features, _= DBFuncs.split_into_two(df)
-        features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, 'PCA+UMAP2D')
-        labels, n_clusters = self.doclustering(features_processed, model_type, params)
+        features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, model_preprop)
+        labels, n_clusters = self.doclustering(features_processed, model_cluster, params)
         print(f'Found {n_clusters} clusters (2D)')
         logger.info(f'Visualization. Found {n_clusters} clusters (2D)')
         return features_processed, labels, n_clusters
@@ -269,4 +272,15 @@ class Clustering:
         file_pdf = os.path.join(fig_dir, filename+'.pdf')
         plt.savefig(file_pdf, format='pdf')
         plt.savefig(file_png, format='png', dpi=300)
+
+    def scores(self, df, labels):
+        excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 
+                          'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'path']
+        df_features, _= DBFuncs.split_into_two(df, excluded_columns)
+        score = silhouette_score(df_features, labels)
+        print(f'Silhouette Score: {score:.3f}')
+        logger.info(f'Silhouette Score: {score:.3f}')
+
+        dbi = davies_bouldin_score(df_features, labels)
+        print(f'Davies-Bouldin index: {dbi:.3f}')
 
