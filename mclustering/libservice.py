@@ -12,7 +12,7 @@ import os
 import re
 import datetime
 import shutil
-
+from typing import Optional, Tuple
 import logging
 logger = logging.getLogger(__name__)
 
@@ -30,12 +30,13 @@ class ServiceFuncs:
         ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def init_error(name):
+    def init_error(name: str) -> None:
+        """Raise an error to prevent instantiation of static utility classes."""
         logger.error(RuntimeError(f'This class [{name}] can not be instantiate.'))
         raise RuntimeError(f'This class [{name}] can not be instantiate.')
 
     @staticmethod
-    def check_extension(file_path: str, allowed_extensions: tuple = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')) -> bool:
+    def check_extension(file_path: str, allowed_extensions: Tuple[str, ...] = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')) -> bool:
         """
         Check if a file has one of the allowed extensions.
 
@@ -51,26 +52,27 @@ class ServiceFuncs:
         bool
             True if the file has an allowed extension, False otherwise.
         """
-        if not file_path.lower().endswith(allowed_extensions):
-            return False
-        return True
+        
+        return file_path.lower().endswith(allowed_extensions)
     
     
     @staticmethod
-    def extract_observ_data(path, pattern=r'(?:r|t)swf-e_(\d{4})(\d{2})(\d{2})'):
+    def extract_observ_data(path: str, pattern: str = r'((?:r|t))swf-e_(\d{4})(\d{2})(\d{2})') -> Tuple[str, datetime.date]:
         """
-        Extracts observation type and date from the filename using regex.
+        Extract observation type and date from the filename using regex.
 
         Parameters
         ----------
         path : str
             File path or name.
+        pattern : str
+            Regular expression pattern to extract observation type and date.
 
         Returns
         -------
         tuple
             (observation_type, datetime.date)
-        
+
         Raises
         ------
         ValueError
@@ -86,7 +88,7 @@ class ServiceFuncs:
 
         
     @staticmethod
-    def preparing_folder(dir_name, clear):
+    def preparing_folder(dir_name: str, clear: bool) -> None:
         """
         Prepare a directory for output, optionally clearing its contents.
 
@@ -94,7 +96,7 @@ class ServiceFuncs:
         ----------
         dir_name : str
             Path to the target directory.
-        clear : bool, optional
+        clear : bool
             If True, the directory will be deleted and recreated.
 
         Raises
@@ -115,7 +117,7 @@ class ServiceFuncs:
 
 
     @staticmethod
-    def input_name(input_imags, pattern=r'images_(\w+)'):
+    def input_name(input_path: str, pattern: str = r'images_(\w+)') -> str:
         """
         Extract an identifier from a file path using a regular expression.
 
@@ -131,14 +133,14 @@ class ServiceFuncs:
         str
             Extracted identifier or the original input if no match found.
         """
-        search = re.search(pattern, input_imags)
+        search = re.search(pattern, input_path)
         if search:
             return search.group(1)
         else:
-            return input_imags
+            return input_path
 
     @staticmethod
-    def create_name(default_filename, file_to_write=None, suffix=None):
+    def create_name(default_filename: str, file_to_write: Optional[str] = None, suffix: Optional[str] = None) -> str:
         """
         Constructs a filename by combining a base name with a suffix.
 
@@ -164,14 +166,16 @@ class ServiceFuncs:
     
 class DBFuncs:
     """
-    A static utility class providing helper for a database management.
+    A static utility class providing helper functions for database management,
+    including loading, saving, and processing metadata.
+
     This class is not meant to be instantiated.
     """
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def load_info(info_path):
+    def load_info(info_path: str) -> pd.DataFrame:
         """
         Load and preprocess metadata from a space-delimited text file.
 
@@ -193,7 +197,7 @@ class DBFuncs:
         return info
     
     @staticmethod
-    def save_database(df, file_to_write=None, kind='pickle'):
+    def save_database(df: pd.DataFrame, file_to_write: Optional[str] = None, kind: str = 'pickle') -> None:
         """
         Save a pandas DataFrame to disk.
 
@@ -201,22 +205,15 @@ class DBFuncs:
         ----------
         df : pandas.DataFrame
             Data to save.
-        file_to_write : str
+        file_to_write : str, optional
             Base filename without extension.
         kind : {'pickle', 'json'}
             Format to save the file in.
-        save_dir : str
-            Directory to save the file to.
-
-        Raises
-        ------
-        Exception
-            If saving fails.
         """
         default_name = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data')
         file_to_write = ServiceFuncs.create_name(default_name, file_to_write=file_to_write)
 
-        print(f'Saving the database to {file_to_write}')
+        #print(f'Saving the database to {file_to_write}')
         logger.info(f'Saving the database to {file_to_write}')
         try:
             if kind == 'pickle':
@@ -228,19 +225,19 @@ class DBFuncs:
             logger.error(f'Failed to save the database: {e}')
 
     @staticmethod
-    def read_database(file_to_read=None, kind='pickle', 
-                dtype={'obsertype': 'category', 'label': 'category', 'date': 'datetime'}):
+    def read_database(file_to_read: Optional[str] = None, kind: str = 'pickle',
+                      dtype: Optional[dict] = {'obsertype': 'category', 'label': 'category', 'date': 'datetime'}) -> Optional[pd.DataFrame]:
         """
         Read a pandas DataFrame from a file.
 
         Parameters
         ----------
-        file_to_read : str
+        file_to_read : str, optional
             Base filename without extension.
         kind : {'pickle', 'json'}
             Format of the file.
-        dtype : dict
-            To set types of columns in the database.
+        dtype : dict, optional
+            Column types to enforce when reading JSON.
 
         Returns
         -------
@@ -250,15 +247,13 @@ class DBFuncs:
         default_name = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data')
         file_to_read = ServiceFuncs.create_name(default_name, file_to_write=file_to_read)
         
-        print(f'Reading a database from a file {file_to_read}')
+        #print(f'Reading a database from a file {file_to_read}')
         logger.info(f'Reading a database from a file {file_to_read}')
         try:
             if kind == 'pickle':
                 df = pd.read_pickle(file_to_read+'.pkl')
             elif kind == 'json':
                 df = pd.read_json(file_to_read+'.json', dtype=dtype)
-            print(df.head())
-            print(df.dtypes)
             return df
         except Exception as e:
             print(f'Error during reading a database: {e}')
@@ -266,7 +261,7 @@ class DBFuncs:
             return None
         
     @staticmethod
-    def split_into_two(df, excluded_columns=None):
+    def split_into_two(df: pd.DataFrame, excluded_columns: Optional[list] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Split a DataFrame into features and metadata columns.
 
@@ -280,23 +275,28 @@ class DBFuncs:
         Returns
         -------
         tuple of pandas.DataFrame
-            (features_df, metadata_df)
+            (df_features, df_metadata)
         """
         if excluded_columns is None:
             excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 
                           'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'oldpath']
         mask = [cols for cols in df.columns if cols not in excluded_columns]
         df_features = df.loc[:, mask]
-        excluded_part = df.loc[:, excluded_columns]
-        return df_features, excluded_part
+        df_metadata = df.loc[:, excluded_columns]
+        return df_features, df_metadata
 
 class Logg:
+    """
+    A utility class for managing logging setup and log file naming.
+
+    This class is not meant to be instantiated.
+    """
 
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def get_log_filename(log_dir='logs', log_name=None):
+    def get_log_filename(log_dir: str = 'logs', log_name: Optional[str] = None) -> str:
         """
         Determines a log file name.
 
@@ -305,8 +305,7 @@ class Logg:
         log_dir : str
             Directory where log files are stored.
         log_name : str or None
-            Custom log file name (e.g., 'log_experiment42.log').
-            If None, a new log name will be generated as 'log_XX.log'.
+            Custom log file name. If None, a new sequential name will be generated.
 
         Returns
         -------
@@ -333,7 +332,15 @@ class Logg:
         return os.path.join(log_dir, name)
 
     @staticmethod
-    def setup_logging(log_file='pipeline.log'):
+    def setup_logging(log_file: str = 'pipeline.log') -> None:
+        """
+        Set up logging configuration.
+
+        Parameters
+        ----------
+        log_file : str
+            Path to the log file.
+        """
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',

@@ -13,6 +13,7 @@ import os
 import re
 from PIL import Image
 
+import torchvision
 from torchvision import models, transforms
 import torch
 from tqdm import tqdm
@@ -24,7 +25,7 @@ from functools import cached_property
 from dataclasses import dataclass, field
 
 from .libservice import ServiceFuncs, DBFuncs
-
+from typing import Optional, Tuple
 import logging
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class ResNetFeatures:
     info: dict = field(init=False)
     database: object = field(init=False)
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Initializes internal fields, filters images, and loads or creates the feature database.
         """
@@ -95,10 +96,10 @@ class ResNetFeatures:
             logger.error(f'Unknown flag: {self.flag}')
             raise ValueError(f'Unknown flag: {self.flag}')
         
-    def set_device(self):
+    def set_device(self) -> None:
         """
-        Sets torch.device according to a user wish self.device if it is available
-        or CPU if it is not.
+        Sets the computation device for PyTorch.
+        Chooses CPU if CUDA is requested but not available.
         """
         if self.device == 'cuda' and not torch.cuda.is_available():
             print('CUDA requested but not available. Falling back to CPU.')
@@ -110,14 +111,14 @@ class ResNetFeatures:
         logger.info(f'Using device: {self._device}')
 
     @cached_property
-    def model(self):
+    def model(self) -> Tuple[torch.nn.Module, torchvision.transforms.Compose]:
         """
-        Loads and caches the model and input transformation.
-        
+        Loads and caches the ResNet50 model and input transformation pipeline.
+
         Returns
         -------
         tuple
-            A tuple (model, transform) where model is a torch.nn.Module and transform is a torchvision transform pipeline.
+            (model, transform) where model is a torch.nn.Module and transform is a torchvision.transforms.Compose pipeline.
         """
         logger.info('ResNet50 model init')
 
@@ -135,7 +136,7 @@ class ResNetFeatures:
 
         return model_resnet50, transform
 
-    def find_mixed_freq(self):
+    def find_mixed_freq(self) -> pd.Series:
         """
         Identifies dataset names with mixed sampling frequencies in the metadata.
 
@@ -157,7 +158,7 @@ class ResNetFeatures:
         return df
     
 
-    def filtering_imgs(self, path: str, name_pattern: str):
+    def filtering_imgs(self, path: str, name_pattern: str) -> None:
         """
         Filters out image paths (in self.img_path,self.names) corresponding to mixed-frequency datasets.
 
@@ -178,13 +179,13 @@ class ResNetFeatures:
                 filepath = os.path.join(path, dataset_name+'.png')
                 self.img_path.remove(filepath)
 
-    def features(self):
+    def features(self) -> np.ndarray:
         """
-        Extracts deep features from all images using ResNet50 model.
+        Extracts deep features from all images using the ResNet50 model.
 
         Returns
         -------
-        np.ndarray
+        numpy.ndarray
             Array of feature vectors for all valid images.
         """
         logger.info('Feature extraction')
@@ -203,7 +204,15 @@ class ResNetFeatures:
                 print(f'Error while openning an image {path}: {err}')
         return np.array(features)
     
-    def features_to_db(self):
+    def features_to_db(self) -> pd.DataFrame:
+        """
+        Converts extracted features to a pandas DataFrame and adds metadata columns.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing features and metadata columns.
+        """
         features = self.features()
         try:
             df_features = pd.DataFrame(
@@ -220,7 +229,7 @@ class ResNetFeatures:
             raise ValueError
         
     
-    def create_database(self):
+    def create_database(self) -> pd.DataFrame:
         """
         Extracts features, merges them with metadata, and constructs a full DataFrame.
 
@@ -245,7 +254,7 @@ class ResNetFeatures:
         return df_full
 
 
-    def filtering_nonzerocolumns(self):
+    def filtering_nonzerocolumns(self) -> pd.DataFrame:
         """
         Removes columns in the feature matrix that contain only zeros.
 
@@ -266,7 +275,7 @@ class ResNetFeatures:
         print(final_df.shape[1])
         return final_df
     
-    def filtering_by_variance(self, threshold=5e-5):
+    def filtering_by_variance(self, threshold: float = 5e-5) -> pd.DataFrame:
         """
         Removes low-variance features from the database.
 
@@ -296,18 +305,20 @@ class ResNetFeatures:
         print(final_df.shape[1])
         return final_df
     
-    def info_on_features(self, df=None, visualize=False, title=''):
+    def info_on_features(self, df: Optional[pd.DataFrame] = None, visualize: bool = False, title: str = '') -> None:
         """
         Prints statistics on extracted features and optionally visualizes variance distribution.
 
         Parameters
         ----------
+        df : pandas.DataFrame, optional
+            DataFrame to analyze. If None, uses self.database.
         visualize : bool
             If True, show a histogram of feature variances.
         title : str
             Optional title for the plot.
         """
-        if not df:
+        if df is None:
             df =self.database
             
         df_features, _ = DBFuncs.split_into_two(self.database)
@@ -324,7 +335,17 @@ class ResNetFeatures:
         if visualize:
             self.visualize_variance(variances, title=title)
 
-    def visualize_variance(self, variances, title=''):
+    def visualize_variance(self, variances: np.ndarray, title: str = '') -> None:
+        """
+        Visualizes the distribution of feature variances as a histogram.
+
+        Parameters
+        ----------
+        variances : numpy.ndarray
+            Array of variances for each feature.
+        title : str
+            Optional plot title.
+        """
         plt.figure(figsize=(7,5))
         plt.subplot(1, 2, 1)
         plt.hist(variances, bins=50, color='skyblue')
