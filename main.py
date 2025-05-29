@@ -68,7 +68,7 @@ def main():
     params = {'eps': 0.9, 'min_samples': 5, 'metric': 'euclidean'}
     clusters_dbscan = Clustering(processed, results_dir, copy=True)
     df_features, _ = DBFuncs.split_into_two(processed)
-    labels_dbscan, num_clusters_dbscan = clusters_dbscan.doclustering(df_features, model_type=model_type, params=params)
+    labels_dbscan, num_clusters_dbscan = clusters_dbscan.do_clustering(df_features, model_type=model_type, params=params)
     print(f'Number of clusters DBSCAN: {num_clusters_dbscan}')
     clusters_dbscan.update_database()
     clusters_dbscan.organize_files_by_cluster()
@@ -85,7 +85,7 @@ def main():
 
     model_type = 'hdbscan'
     clusters_hdbscan = Clustering(processed, results_dir, copy=True)
-    labels_hdbscan, num_clusters_hdbcan = clusters_hdbscan.doclustering(df_features, model_type=model_type)
+    labels_hdbscan, num_clusters_hdbcan = clusters_hdbscan.do_clustering(df_features, model_type=model_type)
     print(f'Number of clusters HDBSCAN: {num_clusters_hdbcan}')
     clusters_hdbscan.update_database()
     clusters_hdbscan.organize_files_by_cluster()
@@ -101,7 +101,7 @@ def main():
 
     model_type = 'kmeans'
     clusters_kmeans = Clustering(processed, results_dir, copy=True)
-    labels_kmeans, num_clusters_kmeans = clusters_kmeans.doclustering(df_features, model_type=model_type)
+    labels_kmeans, num_clusters_kmeans = clusters_kmeans.do_clustering(df_features, model_type=model_type)
     print(f'Number of clusters KMeans: {num_clusters_kmeans}')
     clusters_kmeans.update_database()
     clusters_kmeans.organize_files_by_cluster()

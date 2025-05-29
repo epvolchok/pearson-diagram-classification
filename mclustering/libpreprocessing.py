@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.pipeline import Pipeline
 import umap
 import pandas as pd
+from typing import Optional, Dict, Any
 from .libservice import DBFuncs
 
 import logging
@@ -21,30 +22,23 @@ class FeaturesPreprocessing:
 
     
     """
-        Applies dimensionality reduction and scaling pipelines to a DataFrame of features.
+    Applies dimensionality reduction and scaling pipelines to a DataFrame of features.
 
-        This class provides a flexible wrapper around common preprocessing techniques 
-        such as PCA, StandardScaler, and UMAP. The sequence of transformations is defined 
-        by a string-based pipeline syntax.
+    This class provides a flexible wrapper around common preprocessing techniques 
+    such as PCA, StandardScaler, Normalizer, and UMAP. The sequence of transformations is defined 
+    by a string-based pipeline syntax.
 
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Input DataFrame containing both metadata and features.
-        copy : bool, optional
-            If True, the input DataFrame is copied before processing.
-            If False (default), the original DataFrame is modified in-place.
-
-        Attributes
-        ----------
-        models : dict
-            Dictionary mapping method names ('pca', 'scaler', 'umapnd', 'umap2d') to
-            their corresponding scikit-learn or UMAP objects.
-        df : pandas.DataFrame
-            Stored copy or reference to the input DataFrame.
+    Attributes
+    ----------
+    df : pandas.DataFrame
+        Stored copy or reference to the input DataFrame.
+    model_registry : dict
+        Dictionary mapping method names to their corresponding sklearn/UMAP classes.
+    default_params : dict
+        Default parameters for supported transformation models.
     """
 
-    def __init__(self, df, copy=False):
+    def __init__(self, df: pd.DataFrame, copy: bool = False) -> None:
 
         self.df = df.copy() if copy else df
 
@@ -64,15 +58,58 @@ class FeaturesPreprocessing:
         }
 
 
-    def _init_model(self, model_type: str, params: dict):
+    def _init_model(self, model_type: str, params: Dict[str, Any]) -> Any:
+        """
+        Initialize a preprocessing model based on type and parameters.
+
+        Parameters
+        ----------
+        model_type : str
+            Key name of the model in the model registry.
+        params : dict
+            Dictionary of model parameters.
+
+        Returns
+        -------
+        Any
+            Instantiated model object.
+
+        Raises
+        ------
+        ValueError
+            If model_type is not in the registry.
+        """
         if model_type not in self.model_registry:
             logger.error(ValueError(f'Unknown model: {model_type}'))
             raise ValueError(f'Unknown model: {model_type}')
-        logger.info(f'Initialize model {model_type}')
+        logger.info(f'Initialize model {model_type} with params: {params}')
         return self.model_registry[model_type](**params)
     
 
-    def build_pipeline(self, pipe_str: str, params: dict ={}):
+    def build_pipeline(self, pipe_str: str, params: Optional[Dict[str, Dict[str, Any]]] = None) -> Pipeline:
+        """
+        Builds a preprocessing pipeline from a string specification.
+
+        Parameters
+        ----------
+        pipe_str : str
+            Pipeline string, e.g., 'scaler+pca+umap2d'.
+        params : dict, optional
+            Dictionary mapping pipeline step names to parameter dicts.
+
+        Returns
+        -------
+        sklearn.pipeline.Pipeline
+            The constructed pipeline.
+
+        Raises
+        ------
+        ValueError
+            If pipeline step name is not found in defaults.
+        """
+        if params is None:
+            params = {}
+
         models = pipe_str.lower().split('+')
         steps = []
         for name in models:
@@ -85,11 +122,11 @@ class FeaturesPreprocessing:
                 model_cfg = params[name]
             model_type = self.default_params[name]['type']
             model = self._init_model(model_type, model_cfg)
-            logger.info(f'Model: {model_type}, params: {model_cfg}')
+            logger.debug(f'Model: {model_type}, params: {model_cfg}')
             steps.append((name, model))
         return Pipeline(steps)
 
-    def preproccessing(self, df, pipe_str, params={}): #pipe_str='PCA+UMAPnd+..'
+    def preprocessing(self, df: pd.DataFrame, pipe_str: str, params: Optional[Dict[str, Dict[str, Any]]] = None) -> Optional[pd.DataFrame]:
         """
         Applies a sequence of preprocessing transformations to the feature data.
 
@@ -100,6 +137,8 @@ class FeaturesPreprocessing:
         pipe_str : str
             A string representing the sequence of transformations to apply,
             joined by '+'. For example: 'pca+umap2d'.
+        params : dict, optional
+            Custom parameters for the transformations.
 
         Returns
         -------
@@ -108,23 +147,20 @@ class FeaturesPreprocessing:
 
         Raises
         ------
-        KeyError
-            If the pipeline string contains unknown model names.
+        ValueError
+            If unknown transformation names are specified.
         """
+        if params is None:
+            params = {}
         logger.info(f'Preprocessing launched with "{pipe_str}" pipeline')
         if df.size == 0:
             return None
         pipe = self.build_pipeline(pipe_str, params)
         return pipe.fit_transform(df)
         
-    def wrapper_preprop(self, df, pipe_str, params={}):
-
+    def wrapper_preprop(self, df: pd.DataFrame, pipe_str: str, params: Optional[Dict[str, Dict[str, Any]]] = None) -> pd.DataFrame:
         """
         Applies preprocessing to the feature part of a DataFrame while preserving metadata.
-
-        This method splits the input DataFrame into metadata and feature parts,
-        applies the specified transformation pipeline to the features, and then
-        merges the result back with the metadata.
 
         Parameters
         ----------
@@ -132,6 +168,8 @@ class FeaturesPreprocessing:
             Full input DataFrame including metadata and features.
         pipe_str : str
             Pipeline string specifying preprocessing steps (e.g., 'scaler+pca+umap2d').
+        params : dict, optional
+            Custom parameters for the transformations.
 
         Returns
         -------
@@ -143,7 +181,8 @@ class FeaturesPreprocessing:
         ValueError
             If feature transformation fails or input DataFrame is empty.
         """
-
+        if params is None:
+            params = {}
         df_features, excluded_part = DBFuncs.split_into_two(df)
         processed = self.preproccessing(df_features, pipe_str, params)
         df_processed = pd.DataFrame(

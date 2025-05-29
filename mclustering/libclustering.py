@@ -8,8 +8,10 @@
 
 
 import os
-import subprocess
 import shutil
+from typing import Optional, Dict, Any, Tuple
+import pandas as pd
+import numpy as np
 
 import hdbscan
 from sklearn.cluster import KMeans
@@ -63,7 +65,7 @@ class Clustering:
         Directory path where clustered files will be organized (default is './processed').
     """
 
-    def __init__(self, df, results_dir, copy=False, clear=True):
+    def __init__(self, df: pd.DataFrame, results_dir: str, copy: bool = False, clear: bool = True) -> None:
 
         self.cluster_algorithms = {
             'HDBSCAN': hdbscan.HDBSCAN,
@@ -88,14 +90,56 @@ class Clustering:
         self.dir = results_dir #os.path.join(os.getcwd(), 'processed')
         ServiceFuncs.preparing_folder(self.dir, clear=clear)
 
-    def _init_model(self, model_type: str, params: dict):
+    def _init_model(self, model_type: str, params: dict)-> Any:
+        """
+        Initialize a clustering model with the given type and parameters.
+
+        Parameters
+        ----------
+        model_type : str
+            Name of the clustering algorithm.
+        params : dict
+            Parameters to initialize the clustering model.
+
+        Returns
+        -------
+        Any
+            Instantiated clustering model.
+
+        Raises
+        ------
+        ValueError
+            If the model type is unknown.
+        """
         if model_type not in self.cluster_algorithms:
             logger.error(ValueError(f'Unknown model: {model_type}'))
             raise ValueError(f'Unknown model: {model_type}')
         logger.info(f'Initialize model {model_type}')
         return self.cluster_algorithms[model_type](**params)
     
-    def setup_clustering(self, model, params: dict ={}):
+    def setup_clustering(self, model: str, params: Optional[Dict[str, dict]] = None) -> Tuple[str, object]:
+        """
+        Sets up the clustering model using default or custom parameters.
+
+        Parameters
+        ----------
+        model : str
+            Name of the clustering algorithm.
+        params : dict, optional
+            Custom parameters for the clustering algorithm.
+
+        Returns
+        -------
+        tuple
+            (model_type, model_instance)
+
+        Raises
+        ------
+        ValueError
+            If the model configuration is not found.
+        """
+        if params is None:
+            params = {}
         model = model.lower()
         if model not in self.default_params:
             logger.error(ValueError(f'Model config for "{model}" not found'))
@@ -110,22 +154,26 @@ class Clustering:
         logger.info(f'Clustering model: {model_type}, params: {model_cfg}')
         return model_type, model_clustering
 
-    def doclustering(self, df, model_type, params: dict ={}):
+    def do_clustering(self, df: pd.DataFrame, model_type: str, params: Optional[Dict[str, dict]] = None) -> Tuple[np.ndarray, int]:
         """
-        Applies HDBSCAN clustering to the given feature matrix.
+        Applies clustering to the given feature matrix.
 
         Parameters
         ----------
         df : pandas.DataFrame or numpy.ndarray
-            Feature matrix with shape (n_samples, n_features).
+            Feature matrix.
+        model_type : str
+            Name of the clustering algorithm.
+        params : dict, optional
+            Parameters for the clustering algorithm.
 
         Returns
         -------
-        labels : numpy.ndarray
-            Array of cluster labels for each sample (-1 indicates noise).
-        num_clusters : int
-            Number of clusters detected (excluding noise).
+        tuple
+            (labels, number_of_clusters)
         """
+        if params is None:
+            params = {}
         model, model_clustering = self.setup_clustering(model_type, params)
         logger.info(f'Clusterization with {model}')
         
@@ -140,7 +188,7 @@ class Clustering:
         logger.info(f'Number of clusters: {self.num_clusters}')
         return self.labels, self.num_clusters
     
-    def update_database(self):
+    def update_database(self) -> None:
         """
         Inserts the cluster labels into the internal DataFrame as a new column 'label'.
         """
@@ -150,10 +198,14 @@ class Clustering:
         except Exception as err:
             logger.error(f'Labels can not be added to the database: {err}')
 
-    def create_dirs(self, clear=False):
+    def create_dirs(self, clear: str =False) -> None:
         """
         Creates output directories for each cluster and a separate one for noise.
-        The directories are created under `self.dir` if they do not already exist.
+
+        Parameters
+        ----------
+        clear : bool
+            Whether to clear the directory before creation.
         """
         for cl in range(self.num_clusters):
             dir_name = os.path.join(self.dir, 'label_'+str(cl))
@@ -165,7 +217,7 @@ class Clustering:
 
 
 
-    def create_newpath(self):
+    def create_newpath(self) -> None:
         """
         Assigns new output paths for each sample in the DataFrame based on their cluster label.
         Clustered samples go to './processed/label_<cluster>', noise samples go to './processed/noise'.
@@ -177,7 +229,7 @@ class Clustering:
         logger.debug('New paths added')
 
 
-    def copy_files(self):
+    def copy_files(self) -> None:
         """
         Copies image files from their original locations ('oldpath') to the new cluster-assigned directories ('path').
 
@@ -191,7 +243,7 @@ class Clustering:
                 try:
                     shutil.copy2(oldpath, newpath)
                     
-                except subprocess.CalledProcessError as e:
+                except OSError as e:
                     print(f'Error during copying {oldpath} -> {newpath}: {e}')
                     logger.warning(f'Error during copying {oldpath} -> {newpath}: {e}')
             else:
@@ -199,7 +251,7 @@ class Clustering:
                 logger.warning(f'Probably missing path {index}: oldpath={oldpath}, path={newpath}')
         logger.debug('Files copied to the new folders')
         
-    def organize_files_by_cluster(self):
+    def organize_files_by_cluster(self) -> None:
         """
         Organizes image files into directories by cluster.
 
@@ -208,6 +260,11 @@ class Clustering:
         - Assigns new file paths
         - Copies files to new locations
         - Removes the 'oldpath' column from the DataFrame
+        
+        Returns
+        -------
+        pandas.DataFrame 
+            resulted database self.df
         """
 
         self.create_dirs()
@@ -215,25 +272,30 @@ class Clustering:
         self.copy_files()
         self.df.drop('oldpath', axis=1, inplace=True)
 
+        return self.df
 
-    def visualize(self, df, model_cluster='HDBSCAN', model_preprop='PCA+UMAP2D', params={}, filename=None):
+
+    def visualize(self, df: pd.DataFrame, model_cluster: str = 'HDBSCAN', 
+            model_preprop: str = 'PCA+UMAP2D', params: Optional[Dict[str, dict]] = None, filename: Optional[str] = None) -> None:
         """
-        Reduces the feature space to 2D using PCA + UMAP, applies HDBSCAN clustering, and plots the results.
+        Reduces the feature space to 2D using a preprocessing pipeline,
+        applies clustering, and plots the results.
 
         Parameters
         ----------
         df : pandas.DataFrame
-            Input DataFrame containing features and metadata.
-
-        Saves
-        -----
-        './figures/clusterization.pdf' : PDF version of the cluster plot
-        './figures/clusterization.png' : PNG version (300 DPI)
-
-        Shows
-        -----
-        A scatter plot of the clustered data with noise in gray and clusters in color.
+            Input DataFrame containing features.
+        model_cluster : str
+            Clustering algorithm to use.
+        model_preprop : str
+            Preprocessing pipeline string (e.g., 'PCA+UMAP2D').
+        params : dict, optional
+            Dictionary of parameters for the clustering algorithm.
+        filename : str, optional
+            Output filename (without extension) for saving the plot.
         """
+        if params is None:
+            params = {}
         features_processed, labels, _ = self.visdata_preparation(df, model_cluster, model_preprop, params)
 
         plt.figure(figsize=(10, 8))
@@ -253,8 +315,29 @@ class Clustering:
 
 
 
-    def visdata_preparation(self, df, model_cluster='HDBSCAN', model_preprop='PCA+UMAP2D', params={}):
+    def visdata_preparation(self, df: pd.DataFrame, model_cluster: str = 'HDBSCAN', 
+            model_preprop: str = 'PCA+UMAP2D', params: Optional[Dict[str, dict]] = None) -> Tuple[np.ndarray, np.ndarray, int]:
+        """
+        Prepares data for visualization: preprocesses features and applies clustering.
 
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Input DataFrame.
+        model_cluster : str
+            Clustering algorithm.
+        model_preprop : str
+            Preprocessing pipeline.
+        params : dict, optional
+            Clustering parameters.
+
+        Returns
+        -------
+        tuple
+            (2D_features, labels, number_of_clusters)
+        """
+        if params is None:
+            params = {}
         df_features, _= DBFuncs.split_into_two(df)
         features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, model_preprop)
         labels, n_clusters = self.doclustering(features_processed, model_cluster, params)
@@ -262,8 +345,15 @@ class Clustering:
         logger.info(f'Visualization. Found {n_clusters} clusters (2D)')
         return features_processed, labels, n_clusters
 
-    def saving_figs(self, filename):
+    def saving_figs(self, filename: Optional[str]) -> None:
+        """
+        Saves the clustering plot in PDF and PNG formats.
 
+        Parameters
+        ----------
+        filename : str
+            Base filename to use for saving.
+        """
         fig_dir = os.path.join(os.getcwd(), 'figures')
         default_name = 'clusters'
         if not filename:
@@ -273,14 +363,29 @@ class Clustering:
         plt.savefig(file_pdf, format='pdf')
         plt.savefig(file_png, format='png', dpi=300)
 
-    def scores(self, df, labels):
+    def scores(self, df: pd.DataFrame, labels: np.ndarray) -> None:
+        """
+        Computes and prints clustering evaluation scores.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Full DataFrame including features.
+        labels : numpy.ndarray
+            Cluster labels for each sample.
+
+        Prints
+        ------
+        Silhouette Score and Davies-Bouldin Index.
+        """
         excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 
                           'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'path']
         df_features, _= DBFuncs.split_into_two(df, excluded_columns)
-        score = silhouette_score(df_features, labels)
-        print(f'Silhouette Score: {score:.3f}')
-        logger.info(f'Silhouette Score: {score:.3f}')
+        sil_score = silhouette_score(df_features, labels)
+        print(f'Silhouette Score: {sil_score:.3f}')
+        logger.info(f'Silhouette Score: {sil_score:.3f}')
 
         dbi = davies_bouldin_score(df_features, labels)
         print(f'Davies-Bouldin index: {dbi:.3f}')
+        logger.info(f'Davies-Bouldin index: {dbi:.3f}')
 
