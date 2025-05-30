@@ -224,7 +224,7 @@ class DBFuncs:
             print(f'Failed to save the database: {e}')
             logger.error(f'Failed to save the database: {e}')
 
-    @staticmethod
+    @staticmethod 
     def read_database(file_to_read: Optional[str] = None, kind: str = 'pickle',
                       dtype: Optional[dict] = {'obsertype': 'category', 'label': 'category', 'date': 'datetime'}) -> Optional[pd.DataFrame]:
         """
