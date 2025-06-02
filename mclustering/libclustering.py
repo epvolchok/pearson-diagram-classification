@@ -16,7 +16,7 @@ import numpy as np
 import hdbscan
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score
 
 from .libservice import ServiceFuncs, DBFuncs
 from .libpreprocessing import FeaturesPreprocessing
@@ -382,10 +382,32 @@ class Clustering:
                           'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'path']
         df_features, _= DBFuncs.split_into_two(df, excluded_columns)
         sil_score = silhouette_score(df_features, labels)
-        print(f'Silhouette Score: {sil_score:.3f}')
-        logger.info(f'Silhouette Score: {sil_score:.3f}')
+        print(f'Silhouette Score: {sil_score:.2f}')
+        logger.info(f'Silhouette Score: {sil_score:.2f}')
 
         dbi = davies_bouldin_score(df_features, labels)
-        print(f'Davies-Bouldin index: {dbi:.3f}')
-        logger.info(f'Davies-Bouldin index: {dbi:.3f}')
+        print(f'Davies-Bouldin index: {dbi:.2f}')
+        logger.info(f'Davies-Bouldin index: {dbi:.2f}')
 
+    def stability_score(self, method1: str, labels1: np.array, method2: str, labels2: np.array) -> None:
+        """
+        Computes and prints Adjusted Rand Index for labels of two clustering methods.
+
+        Parameters
+        ----------
+        methods1, methods2 : str
+            Names of used clustering methods
+        labels1, labels2 : np.array
+            Arrays with corresponding labels of clusters
+
+        Prints
+        ----------
+        Adjusted Rand Index
+        """
+        logger.info(f'Comparison of {method1} and {method2} clustering methods')
+        print(f'Comparison of {method1} and {method2} clustering methods')
+
+        ARS = adjusted_rand_score(labels1, labels2)
+
+        print(f'Adjusted Rand Index: {ARS:.2f}')
+        logger.info(f'Adjusted Index score: {ARS:.2f}')
