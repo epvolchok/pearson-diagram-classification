@@ -1,16 +1,19 @@
 # Classification of Statistical Pearson diagrams
 
-(This project is under active development)
+(⚠ This project is under active development)
 
 ## About
 
 This project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see *V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini* 
-*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. The results, including those obtained with the help of this project, are planned to be published in the journal **Journal of Geophysical Research: Machine Learning and Computation**
+*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. The results, including those obtained with the help of this project, are planned to be published in the journal **Journal of Geophysical Research: Machine Learning and Computation**.
 
 ## Features of the Project
 
-For an example of typical Pearson charts that need to be classified, see below and in the folder `./images/images_regular_data/`
-<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width=600>
+For an example of typical Pearson charts that need to be classified, see below and in the folder `./images/images_regular_data/`.
+
+<p align="center">
+<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width=800 />
+</p>
 
 The problem: a set of > 2 thousand statistical diagrams images must be clustered and analyzed. No labeled training data is available.
 
@@ -20,7 +23,9 @@ Image processing:
 3. Smooth reduction of feature space dimension: PCA + UMAP;
 4. Clustering and sorting images by HDBSCAN;
 
-<img src="figures/processing.png" width=600>
+<p align="center">
+<img src="figures/processing.png" width=800 />
+</p>
 
 The project implements the ability to manually construct a pipeline based on any (reasonable) combination of standardization methods (StandardScaler, Normalizer - sci-kit learn library) and dimension reduction methods (UMAP, PCA). Parameters can be adjusted.
 
@@ -42,12 +47,17 @@ Cluster labels are stored in a resulted DataFrame along with image paths.
 
 ## Results
 
-The example of clustered data obtained by a standard algorithm (ResNet+PCA+UMAP2D+HDBSCAN) is below.
-<img src="figures/clusterization.png" width=600>
+The example of clustered data obtained by a standard algorithm: ResNet without a last layer + PCA(with 0.95 dispersion threshold) + UMAP 2D + HDBSCAN, -  is below.
+
+<p align="center">
+<img src="figures/clusterization.png" width=800 />
+</p>
 
 Histograms for clusters in the dependence on parameters of measurements:
-<img src="figures/histograms.png" width=800>
 
+<p align="center">
+<img src="figures/histograms.png" width=800 />
+</p>
 
 ## Structure
 ### Contents
