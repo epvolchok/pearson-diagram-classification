@@ -1,3 +1,3 @@
 from .plot_funcs import*
 
-__all__ = ['HistPlotter']
+__all__ = ['Plotter']
