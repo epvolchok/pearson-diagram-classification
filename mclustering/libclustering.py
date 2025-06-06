@@ -339,8 +339,8 @@ class Clustering:
         if params is None:
             params = {}
         df_features, _= DBFuncs.split_into_two(df)
-        features_processed = FeaturesPreprocessing(df, copy=True).preproccessing(df_features, model_preprop)
-        labels, n_clusters = self.doclustering(features_processed, model_cluster, params)
+        features_processed = FeaturesPreprocessing(df, copy=True).preprocessing(df_features, model_preprop)
+        labels, n_clusters = self.do_clustering(features_processed, model_cluster, params)
         print(f'Found {n_clusters} clusters (2D)')
         logger.info(f'Visualization. Found {n_clusters} clusters (2D)')
         return features_processed, labels, n_clusters

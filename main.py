@@ -62,59 +62,30 @@ def main():
     preprop = FeaturesPreprocessing(features)
     processed = preprop.wrapper_preprop(features.database,'PCA+UMAPND')
 
-    print('Clusterization')
-    logger.info('Clusterization')
-    model_type = 'dbscan'
-    params = {'eps': 0.9, 'min_samples': 5, 'metric': 'euclidean'}
-    clusters_dbscan = Clustering(processed, results_dir, copy=True)
+    print('Clustering')
+
+    types_clustering = {
+        'dbscan': {'eps': 0.8, 'min_samples': 5, 'metric': 'euclidean'},
+        'hdbscan': {},
+        'kmeans': {}
+    }
     df_features, _ = DBFuncs.split_into_two(processed)
-    labels_dbscan, num_clusters_dbscan = clusters_dbscan.do_clustering(df_features, model_type=model_type, params=params)
-    print(f'Number of clusters DBSCAN: {num_clusters_dbscan}')
-    clusters_dbscan.update_database()
-    clusters_dbscan.organize_files_by_cluster()
+    for type_cl, params_cl in types_clustering.items():
+        clusters = Clustering(processed, results_dir, copy=True)
+        logger.info(f'Clustering by {type_cl}')
+        labels, num_clusters = clusters.do_clustering(df_features, model_type=type_cl, params=params_cl)
+        print(f'Number of clusters {type_cl}: {num_clusters}')
+        clusters.update_database()
+        clusters.organize_files_by_cluster()
 
-    logger.info(f'Saving database')
-    file_to_write = default_filename+'_dbscan'
-    DBFuncs.save_database(clusters_dbscan.df, file_to_write=file_to_write)
+        logger.info(f'Saving database')
+        file_to_write = default_filename+'_'+type_cl
+        DBFuncs.save_database(clusters.df, file_to_write=file_to_write)
 
-    logger.info('Visualization dbscan')
-    print('Visualization dbscan')
-    clusters_dbscan.scores(clusters_dbscan.df, labels_dbscan)
-    clusters_dbscan.visualize(features.database, model_cluster='DBSCAN', params=params)
-    
-
-    model_type = 'hdbscan'
-    clusters_hdbscan = Clustering(processed, results_dir, copy=True)
-    labels_hdbscan, num_clusters_hdbcan = clusters_hdbscan.do_clustering(df_features, model_type=model_type)
-    print(f'Number of clusters HDBSCAN: {num_clusters_hdbcan}')
-    clusters_hdbscan.update_database()
-    clusters_hdbscan.organize_files_by_cluster()
-
-    logger.info(f'Saving database')
-    file_to_write = default_filename+'_hdbscan'
-    DBFuncs.save_database(clusters_hdbscan.df, file_to_write=file_to_write)
-
-    logger.info('Visualization hdbscan')
-    print('Visualization hdbscan')
-    clusters_hdbscan.scores(clusters_hdbscan.df, labels_hdbscan)
-    clusters_hdbscan.visualize(features.database, model_cluster='HDBSCAN', params=params)
-
-    model_type = 'kmeans'
-    clusters_kmeans = Clustering(processed, results_dir, copy=True)
-    labels_kmeans, num_clusters_kmeans = clusters_kmeans.do_clustering(df_features, model_type=model_type)
-    print(f'Number of clusters KMeans: {num_clusters_kmeans}')
-    clusters_kmeans.update_database()
-    clusters_kmeans.organize_files_by_cluster()
-
-    logger.info(f'Saving database')
-    file_to_write = default_filename+'_kmeans'
-    DBFuncs.save_database(clusters_kmeans.df, file_to_write=file_to_write)
-
-    logger.info('Visualization kmeans')
-    print('Visualization kmeans')
-    clusters_kmeans.scores(clusters_kmeans.df, labels_kmeans)
-    clusters_dbscan.visualize(features.database, model_cluster='KMeans', params=params)
-
+        logger.info(f'Visualization {type_cl}')
+        print('Visualization dbscan')
+        clusters.scores(clusters.df, labels)
+        clusters.visualize(features.database, model_cluster=type_cl, params=params_cl)
 
     plt.show()
     

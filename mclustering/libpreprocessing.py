@@ -184,7 +184,7 @@ class FeaturesPreprocessing:
         if params is None:
             params = {}
         df_features, excluded_part = DBFuncs.split_into_two(df)
-        processed = self.preproccessing(df_features, pipe_str, params)
+        processed = self.preprocessing(df_features, pipe_str, params)
         df_processed = pd.DataFrame(
             processed,
             columns=[f'feat_{i}' for i in range(processed.shape[1])]
