@@ -279,7 +279,13 @@ class DBFuncs:
         """
         if excluded_columns is None:
             excluded_columns=['dataset_name', 'date', 'dist_to_sun[au]', 'SAMPLES_NUMBER', 
-                          'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]', 'oldpath']
+                          'SAMPLING_RATE[kHz]', 'SAMPLE_LENGTH[ms]']
+        for possible_path in ['path', 'oldpath']:
+            if possible_path in df.columns:
+                if 'path' not in excluded_columns and 'oldpath' not in excluded_columns:
+                    excluded_columns = excluded_columns + [possible_path]
+                break
+
         mask = [cols for cols in df.columns if cols not in excluded_columns]
         df_features = df.loc[:, mask]
         df_metadata = df.loc[:, excluded_columns]

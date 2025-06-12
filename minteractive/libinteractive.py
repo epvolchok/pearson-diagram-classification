@@ -8,16 +8,43 @@
 
 import os
 from mclustering import*
-
+import pandas as pd
+from typing import Optional, Tuple
 import logging
 logger = logging.getLogger(__name__)
 
 class InputManager:
+    """
+    A static utility class for handling interactive user input in the console.
+
+    Provides methods for:
+    - Displaying welcome messages and prompts
+    - Asking yes/no questions with validation
+    - Parsing dictionaries from key=value input
+    - Converting string input to appropriate Python types (bool, int, float, str)
+    - Confirming or modifying regular expressions for dataset matching
+
+    This class is not meant to be instantiated.
+    """
+
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def input_wrapper(message):
+    def input_wrapper(message: str) -> Optional[str]:
+        """
+        Prompts the user for input and handles KeyboardInterrupt gracefully.
+
+        Parameters
+        ----------
+        message : str
+            Prompt message to display to the user.
+
+        Returns
+        -------
+        str or None
+            User input string or None if interrupted.
+        """
         try:
             user_input = input(message)
             return user_input
@@ -27,7 +54,7 @@ class InputManager:
             return
         
     @staticmethod
-    def welcome_message():
+    def welcome_message() -> None:
         """
         Prints a welcome message with initial instructions for placing image data.
         """
@@ -72,7 +99,7 @@ class InputManager:
                 
 
     @staticmethod
-    def filter_mixed_freq(name_pattern):
+    def filter_mixed_freq(name_pattern: str) -> Tuple[bool, str]:
         """
         Asks the user whether to filter out mixed-frequency data.
 
@@ -99,7 +126,21 @@ class InputManager:
         logger.info(f'Name pattern: {name_pattern}')
         return filter_mixed, name_pattern
     
-    def input_dict(prompt='Enter pairs of key=value (empty string - end):'):
+    @staticmethod
+    def input_dict(prompt: str = 'Enter pairs of key=value (empty string - end): ') -> dict:
+        """
+        Interactively builds a dictionary from user input of key=value pairs.
+
+        Parameters
+        ----------
+        prompt : str
+            Message shown before input begins.
+
+        Returns
+        -------
+        dict
+            Dictionary parsed from input.
+        """
         print(prompt)
         result = {}
         while True:
@@ -115,7 +156,21 @@ class InputManager:
             result[key] = value
         return result
     
-    def parse_value(value: str):
+    @staticmethod
+    def parse_value(value: str) -> object:
+        """
+        Attempts to convert a string to a boolean, integer, float, or returns as string.
+
+        Parameters
+        ----------
+        value : str
+            Input string to parse.
+
+        Returns
+        -------
+        object
+            Parsed value (bool, int, float, or str).
+        """
         
         value = value.strip()
         if value.lower() in {'true', 'yes'}:
@@ -131,24 +186,50 @@ class InputManager:
         except ValueError:
             pass
         return value
+    
+    @staticmethod
+    def check_if_database(obj):
+        if isinstance(obj, ResNetFeatures):
+            df = obj.database
+        elif isinstance(obj, Clustering):
+            df = obj.df
+        elif isinstance(obj, pd.DataFrame):
+            df = obj
+        else:
+            logger.error(ValueError('(features) is non-known object'))
+            raise ValueError('(features) is non-known object')
+        return df
 
 
 
 class PathManager:
+    """
+    A static utility class for managing file paths, folders, and output saving.
+
+    Provides methods for:
+    - Prompting and validating image folder names
+    - Creating result and base directories
+    - Asking for custom or default paths
+    - Saving pandas DataFrames with user-defined filenames
+
+    This class is not meant to be instantiated.
+    """
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def preparations():
+    def preparations() -> Tuple[str, str, str]:
         """
-        Prepares required working directories and gathers the user’s image folder name.
+        Sets up required working directories and obtains the user's image folder name.
 
         Returns
         -------
         input_imags : str
-            Name of the user-specified image subdirectory.
+            Name of the subdirectory in 'images/' containing image data.
         default_filename : str
-            Suggested default filename for saving feature data.
+            Base filename used for saving feature-related data.
+        results_dir : str
+            Directory for processed results.
         """
 
         base_dir_names = ['images', 'processed', 'figures', 'data', 'results', 'logs']
@@ -161,12 +242,20 @@ class PathManager:
         PathManager.create_base_dirs(*base_dir_names)
 
         input_imags = PathManager.images_folder()
-        default_filename = PathManager.create_results_dir(input_imags)
+        default_filename, results_dir = PathManager.create_results_dir(input_imags)
         
-        return input_imags, default_filename
+        return input_imags, default_filename, results_dir
     
     @staticmethod
-    def create_base_dirs(*args):
+    def create_base_dirs(*args: str) -> None:
+        """
+        Ensures that a set of base directories exists (creates if missing).
+
+        Parameters
+        ----------
+        *args : str
+            Names of directories to ensure exist within the current working directory.
+        """
         cwd = os.getcwd()
         for dirname in args:
             dirname = os.path.join(cwd, dirname)
@@ -174,7 +263,17 @@ class PathManager:
         logger.info('Base directories checked or created')
     
     @staticmethod
-    def images_folder():
+    def images_folder() -> str:
+        """
+        Prompts the user to input a valid subdirectory name inside 'images/'.
+
+        Repeats until a valid directory is given.
+
+        Returns
+        -------
+        str
+            Valid image folder name.
+        """
         cwd = os.getcwd()
         input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
         isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
@@ -188,7 +287,22 @@ class PathManager:
         return input_imags
     
     @staticmethod
-    def create_results_dir(input_imags):
+    def create_results_dir(input_imags: str) -> Tuple[str, str]:
+        """
+        Constructs paths for results and prompts whether to clear previous outputs.
+
+        Parameters
+        ----------
+        input_imags : str
+            Image folder name, used to derive output paths.
+
+        Returns
+        -------
+        default_filename : str
+            Base path for saving output data.
+        results_dir : str
+            Directory for saving processed files.
+        """
         cwd = os.getcwd()
         specification = ServiceFuncs.input_name(input_imags)
         results_dir = os.path.join(cwd, 'processed', 'processed_'+specification)
@@ -198,24 +312,24 @@ class PathManager:
         clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
         ServiceFuncs.preparing_folder(results_dir, clear=clear)
         logger.info(f'Clearing results folder: {clear}')
-        return default_filename
+        return default_filename, results_dir
 
     @staticmethod
-    def get_path(message, default_path):
+    def get_path(message: str, default_path: str) -> str:
         """
-        Gets a file path from the user, or uses the default if none is entered.
+        Prompts the user for a path or returns the default if input is empty.
 
         Parameters
         ----------
         message : str
-            Prompt for the user.
+            Prompt to display.
         default_path : str
-            Default path to return if user provides no input.
+            Path to use if user provides nothing.
 
         Returns
         -------
         str
-            Final path.
+            The path chosen by the user.
         """
 
         file_path = InputManager.input_wrapper(message)
@@ -225,7 +339,7 @@ class PathManager:
 
     
     @staticmethod
-    def saving_database(df, default_filename, message, suf):
+    def saving_database(df: pd.DataFrame, default_filename: str, message: str, suf: str) -> None:
         """
         Prompts the user to save the DataFrame to a file with optional suffix.
 

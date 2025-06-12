@@ -51,7 +51,7 @@ def main():
     print('Filtration')
     logger.info(f'Filtration')
     features.database = features.filtering_by_variance()
-    features.info_on_features()
+    ResNetFeatures.info_on_features(features)
 
     logger.info(f'Saving database')
     file_to_write = default_filename+'_filtered'

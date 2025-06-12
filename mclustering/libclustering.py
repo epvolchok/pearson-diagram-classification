@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 class Clustering:
 
     """
-    Performs HDBSCAN clustering on a feature dataset and manages file sorting and visualization.
+    Performs clustering on a feature dataset and manages file sorting and visualization.
 
     This class supports unsupervised clustering using the HDBSCAN algorithm,
     updates the associated feature database with labels, and organizes files

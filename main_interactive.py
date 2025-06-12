@@ -19,7 +19,7 @@ def main():
     InputManager.welcome_message()
 
     
-    input_imags, default_filename = PathManager.preparations()
+    input_imags, default_filename, results_dir = PathManager.preparations()
     cwd = os.getcwd()
     default_info_path = os.path.join(cwd, 'data', 'SOLO_info_rswf.txt')
     message = f'Enter a path to the file with metadata (or press "Enter" to use default {default_info_path}): '
@@ -30,7 +30,7 @@ def main():
 
     print('Features are extracted/launched!')
 
-    ProcessingPipeline.run_processing(features, default_filename)
+    ProcessingPipeline.run_processing(features, default_filename, results_dir)
 
 
 if __name__ == '__main__':

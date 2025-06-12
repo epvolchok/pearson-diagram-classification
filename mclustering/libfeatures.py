@@ -305,7 +305,8 @@ class ResNetFeatures:
         print(final_df.shape[1])
         return final_df
     
-    def info_on_features(self, df: Optional[pd.DataFrame] = None, visualize: bool = False, title: str = '') -> None:
+    @staticmethod
+    def info_on_features(df: Optional[pd.DataFrame] = None, visualize: bool = False, title: str = '') -> None:
         """
         Prints statistics on extracted features and optionally visualizes variance distribution.
 
@@ -318,10 +319,12 @@ class ResNetFeatures:
         title : str
             Optional title for the plot.
         """
-        if df is None:
-            df =self.database
+        if isinstance(df, ResNetFeatures):
+            df = df.database
+        elif isinstance(df, pd.DataFrame):
+            df = df
             
-        df_features, _ = DBFuncs.split_into_two(self.database)
+        df_features, _ = DBFuncs.split_into_two(df)
 
         distances = pairwise_distances(df_features, metric='cosine')
         mean_dist = distances[np.triu_indices_from(distances, k=1)].mean()
@@ -333,9 +336,10 @@ class ResNetFeatures:
         logger.info(f'Average variance: {np.mean(variances)}')
 
         if visualize:
-            self.visualize_variance(variances, title=title)
+            ResNetFeatures.visualize_variance(variances, title=title)
 
-    def visualize_variance(self, variances: np.ndarray, title: str = '') -> None:
+    @staticmethod
+    def visualize_variance(variances: np.ndarray, title: str = '') -> None:
         """
         Visualizes the distribution of feature variances as a histogram.
 

@@ -10,6 +10,8 @@ import os
 import pandas as pd
 from mclustering import*
 from .libinteractive import InputManager, PathManager
+from mclustering import DBFuncs
+import matplotlib.pyplot as plt
 
 import logging
 logger = logging.getLogger(__name__)
@@ -146,14 +148,106 @@ class FeatureManager:
         )
         logger.info('Features loaded successfully')
         return features
-
-class ProcessingPipeline:
     
+class ProcessingSteps:
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def run_processing(features, default_filename):
+    def filtration(features):
+        """
+        Applies variance-based filtering to the feature set.
+
+        Parameters
+        ----------
+        features : ResNetFeatures
+            Input feature database.
+
+        Returns
+        -------
+        ResNetFeatures
+            Filtered features with updated `.database`.
+        """
+        print('Filtration')
+        logger.info(f'Filtration')
+        features.database = features.filtering_by_variance()
+        ResNetFeatures.info_on_features(features)
+        return features
+    
+    @staticmethod
+    def run_preprocessing(features, pipe_str='PCA+UMAPND', params=None):
+        """
+        Applies a sequence of dimensionality reduction steps to the feature matrix.
+
+        Parameters
+        ----------
+        features : ResNetFeatures
+            The extracted and optionally filtered features.
+        pipe_str : str, optional
+            Pipeline specification string, e.g., 'PCA+UMAPND'.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Transformed feature DataFrame with original metadata preserved.   
+        """
+        if params is None:
+            params = {}
+
+        print('Preprocessing')
+        logger.info('Preprocessing')
+        preprop = FeaturesPreprocessing(features)
+        df = InputManager.check_if_database(features)
+        processed = preprop.wrapper_preprop(df, pipe_str, params)
+        return processed
+    
+    @staticmethod
+    def run_clustering(features, results_dir, model_type='hdbscan', params=None):
+        """
+        Performs HDBSCAN clustering and sorts image files into corresponding folders.
+
+        Parameters
+        ----------
+        features : pandas.DataFrame
+            The feature matrix with metadata.
+
+        Returns
+        -------
+        Clustering
+            Clustering object with updated label assignments and organized folders.
+        """
+        print('Clusterization')
+        logger.info(f'Clusterization by {model_type}')
+        
+        clusters = Clustering(features, results_dir)
+        df_features, _ = DBFuncs.split_into_two(features)
+        _, num_clusters = clusters.do_clustering(df_features, model_type=model_type, params=params)
+        print(f'Number of clusters 20D: {num_clusters}')
+        clusters.update_database()
+        clusters.organize_files_by_cluster()
+        return clusters
+    
+    @staticmethod
+    def evaluation_clustering_results(clusters, source_features, model_type):
+        #Scores
+        clusters.scores(clusters.df, clusters.labels)
+        # Visualization
+        logger.info('Visualization')
+        clusters.visualize(source_features.database, model_cluster=model_type)
+        plt.show()
+
+    @staticmethod
+    def evaluation_preprocessing_results(processed_database, pipeline):
+        visualize = InputManager.get_bool('Would you like to plot histogram of features varience? > ')
+        ResNetFeatures.info_on_features(df=processed_database, visualize=visualize, title=pipeline)
+        plt.show()
+    
+class ProcessingPipeline:
+    def __init__(self):
+        ServiceFuncs.init_error(__class__.__name__)
+
+    @staticmethod
+    def run_processing(features, default_filename, results_dir):
         """
         Offers the user a choice between standard pipeline execution or custom steps.
 
@@ -169,12 +263,12 @@ class ProcessingPipeline:
         print(message)
         logger.info('Processing running')
         while True:
-            choice = InputManager.input_wrapper('[1/2] > ').strip()
+            choice = InputManager.input_wrapper('Scenario [1/2] > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
-                ProcessingPipeline.standard_algorithm(features, default_filename)
+                ProcessingPipeline.standard_algorithm(features, default_filename, results_dir)
             elif choice == '2':
-                ProcessingPipeline.choose_block(features, default_filename)
+                ProcessingPipeline.choose_block(features, default_filename, results_dir)
             elif choice == 'break':
                 break
             else:
@@ -184,7 +278,7 @@ class ProcessingPipeline:
 
 
     @staticmethod
-    def standard_algorithm(features, default_filename):
+    def standard_algorithm(features, default_filename, results_dir):
         """
         Executes the full default processing pipeline:
         1. Feature filtering by variance
@@ -210,124 +304,114 @@ class ProcessingPipeline:
         print(message)
         logger.info('Standard algorithm launched')
 
-        features = ProcessingPipeline.filtration(features)
+        features = ProcessingSteps.filtration(features)
 
-        message = f'Enter a file name to save the filtered data (or press "Enter" to use default name) > '
+        message = f'Enter a file name to save the filtered data (or press "Enter" to use default name: {default_filename}) > '
         PathManager.saving_database(features.database, default_filename, message, suf='_filtered')
 
-        processed = ProcessingPipeline.run_preprocessing(features, 'PCA+UMAPND')
+        processed = ProcessingSteps.run_preprocessing(features, 'PCA+UMAPND')
 
-        clusters = ProcessingPipeline.run_clusterization(processed)
+        clusters = ProcessingSteps.run_clustering(processed, results_dir)
 
-        message = 'Enter a file name to save the clustered data (or press "Enter" to use default name) > '
+        message = f'Enter a file name to save the clustered data (or press "Enter" to use default name: {default_filename}) > '
         PathManager.saving_database(clusters.df, default_filename, message, suf='_clustered')
 
-        # Visualization
-        logger.info('Visualization')
-        clusters.visualize_HDBSCAN(features.database)
+        ProcessingSteps.evaluation_clustering_results(clusters, features, 'HDBSCAN')
 
     @staticmethod
-    def filtration(features):
-        """
-        Applies variance-based filtering to the feature set.
-
-        Parameters
-        ----------
-        features : ResNetFeatures
-            Input feature database.
-
-        Returns
-        -------
-        ResNetFeatures
-            Filtered features with updated `.database`.
-        """
-        print('Filtration')
-        logger.info(f'Filtration')
-        features.database = features.filtering_by_variance()
-        features.info_on_features()
-        return features
-    
-    @staticmethod
-    def run_preprocessing(features, pipe_str='PCA+UMAPND', params={}):
-        """
-        Applies a sequence of dimensionality reduction steps to the feature matrix.
-
-        Parameters
-        ----------
-        features : ResNetFeatures
-            The extracted and optionally filtered features.
-        pipe_str : str, optional
-            Pipeline specification string, e.g., 'PCA+UMAPND'.
-
-        Returns
-        -------
-        pandas.DataFrame
-            Transformed feature DataFrame with original metadata preserved.   
-        """
-        print('Preprocessing')
-        logger.info('Preprocessing')
-        preprop = FeaturesPreprocessing(features)
-        if isinstance(features, ResNetFeatures):
-            df = features.database
-        elif isinstance(features, pd.DataFrame):
-            df = features
-        else:
-            logger.error(ValueError('(features) is non-known object'))
-            raise ValueError('(features) is non-known object')
-        processed = preprop.wrapper_preprop(df, pipe_str, params)
-        return processed
-    
-    @staticmethod
-    def run_clusterization(features):
-        """
-        Performs HDBSCAN clustering and sorts image files into corresponding folders.
-
-        Parameters
-        ----------
-        features : pandas.DataFrame
-            The feature matrix with metadata.
-
-        Returns
-        -------
-        Clustering
-            Clustering object with updated label assignments and organized folders.
-        """
-
-        print('Clusterization')
-        logger.info('Clusterization')
-        clusters = Clustering(features)
-        df_features, _ = DBFuncs.split_into_two(features)
-        _, num_clusters = clusters.clustering_HDBSCAN(df_features)
-        print(f'Number of clusters 20D: {num_clusters}')
-        clusters.update_database()
-        clusters.organize_files_by_cluster()
-        return clusters
-    
-    @staticmethod
-    def choose_block(features, default_filename):
+    def choose_block(features, default_filename, results_dir):
 
         message = 'Choose a block of data processing: \n' + \
         '1. preprocessing: scaling and dimensions reduction \n' + \
         '2. clusterization of processed data (compress dimensions first!) \n' + \
-        '3. analysis of obtained results (haven\'t implemented)\n' + \
         'or enter "break" to return to the higher level'
 
         print(message)
-
+        processed = None
         while True:
-            choice = InputManager.input_wrapper('[1/2/3] >  ').strip()
+            choice = InputManager.input_wrapper('Choose block [1/2] >  ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
-                ProcessingPipeline.preprocessing_setup(features, default_filename)
+                processed = PipelineUI.preprocessing_setup(features, default_filename)
             elif choice == '2':
-                print('This part has not been implemented yet. Use 1 or break.')
-            elif choice == '3':
-                print('This part has not been implemented yet. Use 1 or break.')
+                data = PipelineUI.source_data(processed)
+                if data is None:
+                    break
+                else:
+                    PipelineUI.clustering_setup(features, data, default_filename, results_dir)
             elif choice == 'break':
                 break
             else:
                 print('Invalid input. \n Please enter 1, 2 or 3 (or break).')
                 logger.debug('Invalid input.')
+
+class PipelineUI:
+
+    def __init__(self):
+        ServiceFuncs.init_error(__class__.__name__)
+
+    @staticmethod
+    def source_data(processed):
+        message = 'Would you like to use the results from the previous step? (1) \n' + \
+        'or to set a path to a data file? (2)'
+        print(message)
+        choice = InputManager.input_wrapper('[1/2] > ').strip()
+        logger.info(f'Choice: {choice}')
+        if choice == '1':
+            if processed is None:
+                print('You should preprocess data first or specify a file path')
+                logger.warning('Trying to make clustering before proprocessing')
+        elif choice == '2':
+            default_path = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data_processed')
+            path = PathManager.get_path('Set path to the source file > ', default_path)
+            processed = DBFuncs.read_database(path)
+        return processed
+    
+    @staticmethod
+    def get_processing_params(pipeline):
+        print(f'Enter parameters for every or some of steps in {pipeline} >')
+        models = pipeline.lower().split('+')
+        params = {}
+        for name in models:
+            param = InputManager.input_dict(f'Enter parameters for {name} (as key=value) > ')
+            if param:
+                params[name] = param
+        return params
+    
+    @staticmethod
+    def get_clustering_params(model):
+        print(f'Enter parameters model {model} >')
+
+        params = InputManager.input_dict(f'Enter parameters for {model} (as key=value) > ')
+
+        return params
+    
+    @staticmethod
+    def clustering_setup(features, data, default_filename, results_dir):
+        message = 'To cluster data, enter a model name. \n' + \
+        'Available models: \n' + \
+        'hdbscan.HDBSCAN - use "hdbscan" \n' + \
+        'sklearn.cluster.DBSCAN - use "dbscan" \n' + \
+        'sklearn.cluster.KMeans - use "kmeans" \n' + \
+        'You will be able to set parameters for any of these funcs (enter "params") \n' + \
+        'or use default parameters: \n' + \
+        'default parameters: \n' + \
+        f'{Clustering(data, results_dir).default_params}.'
+        print(message)
+
+        while True:
+            model = InputManager.input_wrapper('Enter a clustering model: ').strip()
+            logger.info(f'Model: {model}')
+            if model == 'break':
+                break
+            if InputManager.get_bool('Would you like to enter params? '):
+                params = PipelineUI.get_clustering_params(model)
+            else:
+                params = {}
+            clusters = ProcessingSteps.run_clustering(features=data, \
+                                results_dir=results_dir, model_type=model, params=params)
+
+            PipelineUI.to_deal_with_results_clustering(clusters, features, model, default_filename, '_clustering')
 
     @staticmethod
     def preprocessing_setup(features, default_filename):
@@ -337,7 +421,7 @@ class ProcessingPipeline:
         'sklearn.Normalizer() - use "normalizer" \n' + \
         'sklearn.StandartScalar() - use "scalar" \n' + \
         'sklearn.PCA() - use "pca" \n' + \
-        'umap.UMAP() - use "umapnd". \n' + \
+        'umap.UMAP() - use "umapnd" (it compreses to 20D default). \n' + \
         'You will be able to set parameters for any of these funcs (enter "params") \n' + \
         'or use default parameters: \n' + \
         'default parameters: \n' + \
@@ -350,40 +434,48 @@ class ProcessingPipeline:
             logger.info(f'Pipeline: {pipeline}')
             if pipeline == 'break':
                 break
-
             if InputManager.get_bool('Would you like to enter params? '):
-                params = ProcessingPipeline.get_processing_params(pipeline)
+                params = PipelineUI.get_processing_params(pipeline)
             else:
                 params = {}
-            processed = ProcessingPipeline.run_preprocessing(features, pipeline, params)
+            processed = ProcessingSteps.run_preprocessing(features, pipeline, params)
 
-            ProcessingPipeline.to_deal_results(pipeline, processed, default_filename)
-
+            PipelineUI.to_deal_with_results_features(pipeline, processed, default_filename, '_processed')
+        return processed
+    
     @staticmethod
-    def to_deal_results(pipeline, processed, default_filename):
+    def to_deal_with_results_features(pipeline, processed, default_filename, suf):
 
         while True:
-            choice = InputManager.input_wrapper('Enter "save", "print", "break" or "continue" to try again > ').strip()
+            choice = InputManager.input_wrapper('Enter "save", "print", "break" > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == 'save':
+                df = InputManager.check_if_database(processed)
                 message = f'Enter a file name to save data (or press "Enter" to use default_name: {default_filename}) > '
-                PathManager.saving_database(processed, default_filename, message, suf='_processed')
+                PathManager.saving_database(df, default_filename, message, suf=suf)
             elif choice == 'print':
-                visualize = InputManager.get_bool('Would you like to plot histogram of features varience? > ')
-                ResNetFeatures.info_on_features(processed, visualize, title=pipeline)
+                ProcessingSteps.evaluation_preprocessing_results(processed, pipeline)
             elif choice == 'break':
                 break
             else:
                 print('Invalid input. \n Try again!')
                 logger.debug('Invalid input.')
 
+
     @staticmethod
-    def get_processing_params(pipeline):
-        print(f'Enter parameters for every or some of steps in {pipeline} >')
-        models = pipeline.lower().split('+')
-        params = {}
-        for name in models:
-            param = InputManager.input_dict(f'Enter parameters for {name} (as key=value) > ')
-            if param:
-                params[name] = param
-        return params
+    def to_deal_with_results_clustering(clusters, source_features, model_type, default_filename, suf):
+        while True:
+            choice = InputManager.input_wrapper('Enter "save", "print", "break" > ').strip()
+            logger.info(f'Choice: {choice}')
+            if choice == 'save':
+                df = InputManager.check_if_database(clusters)
+                message = f'Enter a file name to save data (or press "Enter" to use default_name: {default_filename}) > '
+                PathManager.saving_database(df, default_filename, message, suf=suf)
+            elif choice == 'print':
+                ProcessingSteps.evaluation_clustering_results(clusters, source_features, model_type)
+            elif choice == 'break':
+                break
+            else:
+                print('Invalid input. \n Try again!')
+                logger.debug('Invalid input.')
+

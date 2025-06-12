@@ -54,6 +54,7 @@ class FeaturesPreprocessing:
             'scaler': {'type': 'StandardScaler', 'params': {}},
             'pca': {'type': 'PCA', 'params': {'n_components': 0.95, 'svd_solver': 'full'}},
             'umapnd': {'type': 'UMAP', 'params': {'n_components': 20, 'min_dist': 0.1, 'metric': 'cosine'}},
+            'umap': {'type': 'UMAP', 'params': {'n_components': 20, 'min_dist': 0.1, 'metric': 'cosine'}},
             'umap2d': {'type': 'UMAP', 'params': {'n_components': 2, 'min_dist': 0.1, 'metric': 'cosine'}}
         }
 
