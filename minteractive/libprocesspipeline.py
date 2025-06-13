@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 import logging
 logger = logging.getLogger(__name__)
+from typing import Optional, Dict, Tuple, Any
 
 class FeatureManager:
     """
@@ -27,7 +28,7 @@ class FeatureManager:
         ServiceFuncs.init_error(__class__.__name__)
     
     @staticmethod
-    def get_features(input_imags: str, info_path: str, default_filename: str, name_pattern: str):
+    def get_features(input_imags: str, info_path: str, default_filename: str, name_pattern: str)-> ResNetFeatures:
         """
         Asks the user whether to extract new features or read from file.
 
@@ -64,12 +65,12 @@ class FeatureManager:
             elif choice == 'break':
                 break
             else:
-                print('Invalid input. \n Try again!')
+                print('Invalid input. \n Try again! > ')
                 logger.debug('Invalid input. Please enter 1 or 2 (or break).')
         return features
 
     @staticmethod
-    def extract_features(input_imags, info_path, default_filename, name_pattern):
+    def extract_features(input_imags: str, info_path: str, default_filename:str, name_pattern: str)-> ResNetFeatures:
         """
         Initializes feature extraction and saves them to file.
 
@@ -109,7 +110,7 @@ class FeatureManager:
         return features
     
     @staticmethod
-    def read_features(input_imags, info_path, default_filename, name_pattern):
+    def read_features(input_imags: str, info_path: str, default_filename: str, name_pattern: str) -> ResNetFeatures:
         """
         Loads previously saved feature data from a file.
 
@@ -150,11 +151,18 @@ class FeatureManager:
         return features
     
 class ProcessingSteps:
+    """
+    Provides static methods for data processing steps, including filtering,
+    preprocessing (dimensionality reduction), clustering, and result evaluation.
+
+    This class is not intended to be instantiated.
+    """
+
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def filtration(features):
+    def filtration(features: ResNetFeatures) -> ResNetFeatures:
         """
         Applies variance-based filtering to the feature set.
 
@@ -175,7 +183,8 @@ class ProcessingSteps:
         return features
     
     @staticmethod
-    def run_preprocessing(features, pipe_str='PCA+UMAPND', params=None):
+    def run_preprocessing(features: ResNetFeatures, pipe_str: str ='PCA+UMAPND', 
+                          params: Optional[Dict[str, dict]] =None) -> pd.DataFrame:
         """
         Applies a sequence of dimensionality reduction steps to the feature matrix.
 
@@ -185,6 +194,8 @@ class ProcessingSteps:
             The extracted and optionally filtered features.
         pipe_str : str, optional
             Pipeline specification string, e.g., 'PCA+UMAPND'.
+        params : dict, optional
+            Optional parameters for preprocessing steps.
 
         Returns
         -------
@@ -202,14 +213,21 @@ class ProcessingSteps:
         return processed
     
     @staticmethod
-    def run_clustering(features, results_dir, model_type='hdbscan', params=None):
+    def run_clustering(features: ResNetFeatures, results_dir: str, model_type: str ='hdbscan', 
+                       params: Optional[Dict[str, Any]]=None) -> Clustering:
         """
-        Performs HDBSCAN clustering and sorts image files into corresponding folders.
+        Performs clustering and sorts image files into corresponding folders.
 
         Parameters
         ----------
         features : pandas.DataFrame
             The feature matrix with metadata.
+        results_dir : str
+            Path to output directory.
+        model_type : str, optional
+            Clustering model identifier.
+        params : dict, optional
+            Model parameters.
 
         Returns
         -------
@@ -228,7 +246,19 @@ class ProcessingSteps:
         return clusters
     
     @staticmethod
-    def evaluation_clustering_results(clusters, source_features, model_type):
+    def evaluation_clustering_results(clusters: Clustering, source_features: ResNetFeatures, model_type: str) -> None:
+        """
+        Display clustering quality scores and perform visualization.
+
+        Parameters
+        ----------
+        clusters : Clustering
+            Clustered object to evaluate.
+        source_features : ResNetFeatures
+            Original features to visaulize.
+        model_type : str
+            Clustering model identifier.
+        """
         #Scores
         clusters.scores(clusters.df, clusters.labels)
         # Visualization
@@ -237,17 +267,32 @@ class ProcessingSteps:
         plt.show()
 
     @staticmethod
-    def evaluation_preprocessing_results(processed_database, pipeline):
-        visualize = InputManager.get_bool('Would you like to plot histogram of features varience? > ')
+    def evaluation_preprocessing_results(processed_database: ResNetFeatures, pipeline: str) -> None:
+        """
+        Show histogram of feature variances and preprocessing info.
+
+        Parameters
+        ----------
+        processed_database : pd.DataFrame
+            Preprocessed feature data.
+        pipeline : str
+            Pipeline descriptor used.
+        """
+        visualize = InputManager.get_bool('Would you like to plot a histogram of features varience? > ')
         ResNetFeatures.info_on_features(df=processed_database, visualize=visualize, title=pipeline)
         plt.show()
     
 class ProcessingPipeline:
+    """
+    Orchestrates the full or step-wise processing of feature data.
+
+    This class is not intended to be instantiated.
+    """
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def run_processing(features, default_filename, results_dir):
+    def run_processing(features: ResNetFeatures, default_filename: str, results_dir: str) -> None:
         """
         Offers the user a choice between standard pipeline execution or custom steps.
 
@@ -257,13 +302,16 @@ class ProcessingPipeline:
             Feature database.
         default_filename : str
             Base name for saving intermediate or final results.
+        results_dir: str
+            Directory for result outputs.
+
         """
         message = 'Would you like to launch the standard processing algorithm (1) or \n' + \
                     'to call separate blocks of processing manually (2)?'
         print(message)
         logger.info('Processing running')
         while True:
-            choice = InputManager.input_wrapper('Scenario [1/2] > ').strip()
+            choice = InputManager.input_wrapper('Choose scenario [1/2] > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
                 ProcessingPipeline.standard_algorithm(features, default_filename, results_dir)
@@ -272,13 +320,13 @@ class ProcessingPipeline:
             elif choice == 'break':
                 break
             else:
-                print('Invalid input. \n Try again!')
+                print('Invalid input. \n Try again! > ')
                 logger.debug('Invalid input. Please enter 1 or 2 (or break).')
 
 
 
     @staticmethod
-    def standard_algorithm(features, default_filename, results_dir):
+    def standard_algorithm(features: ResNetFeatures, default_filename: str, results_dir: str) -> None:
         """
         Executes the full default processing pipeline:
         1. Feature filtering by variance
@@ -292,6 +340,8 @@ class ProcessingPipeline:
             Input feature database object.
         default_filename : str
             Base filename for saving outputs.
+        results_dir: str
+            Output directory.
         """
         message = 'The standard algorithm: \n' + \
             '1. Filtration of ResNet features by variance, thershold=1e-5 \n' + \
@@ -319,7 +369,20 @@ class ProcessingPipeline:
         ProcessingSteps.evaluation_clustering_results(clusters, features, 'HDBSCAN')
 
     @staticmethod
-    def choose_block(features, default_filename, results_dir):
+    def choose_block(features: ResNetFeatures, default_filename: str, results_dir: str) -> None:
+
+        """
+        Provides UI to manually select individual processing steps.
+
+        Parameters
+        ----------
+        features : ResNetFeatures
+            Feature data.
+        default_filename : str
+            Output file base name.
+        results_dir : str
+            Directory for results.
+        """
 
         message = 'Choose a block of data processing: \n' + \
         '1. preprocessing: scaling and dimensions reduction \n' + \
@@ -329,7 +392,7 @@ class ProcessingPipeline:
         print(message)
         processed = None
         while True:
-            choice = InputManager.input_wrapper('Choose block [1/2] >  ').strip()
+            choice = InputManager.input_wrapper('Choose a block [1/2] >  ').strip()
             logger.info(f'Choice: {choice}')
             if choice == '1':
                 processed = PipelineUI.preprocessing_setup(features, default_filename)
@@ -342,16 +405,31 @@ class ProcessingPipeline:
             elif choice == 'break':
                 break
             else:
-                print('Invalid input. \n Please enter 1, 2 or 3 (or break).')
+                print('Invalid input. \n Please enter 1, 2 or 3 (or break). >')
                 logger.debug('Invalid input.')
 
 class PipelineUI:
-
+    """
+    Provides user interface utilities for preprocessing and clustering configuration and result handling.
+    """
     def __init__(self):
         ServiceFuncs.init_error(__class__.__name__)
 
     @staticmethod
-    def source_data(processed):
+    def source_data(processed: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+        """
+        Chooses whether to use previous step data or load from file.
+
+        Parameters
+        ----------
+        processed : pd.DataFrame or None
+            Data from previous pipeline step.
+
+        Returns
+        -------
+        pd.DataFrame or None
+            Selected feature data.
+        """
         message = 'Would you like to use the results from the previous step? (1) \n' + \
         'or to set a path to a data file? (2)'
         print(message)
@@ -360,7 +438,7 @@ class PipelineUI:
         if choice == '1':
             if processed is None:
                 print('You should preprocess data first or specify a file path')
-                logger.warning('Trying to make clustering before proprocessing')
+                logger.warning('Attempted clustering before preprocessing.')
         elif choice == '2':
             default_path = os.path.join(os.getcwd(), 'results', 'pearson_diagram_data_processed')
             path = PathManager.get_path('Set path to the source file > ', default_path)
@@ -368,7 +446,20 @@ class PipelineUI:
         return processed
     
     @staticmethod
-    def get_processing_params(pipeline):
+    def get_processing_params(pipeline: str) -> Dict[str, Dict[str, Any]]:
+        """
+        Prompts user to input parameters for each step in a pipeline.
+
+        Parameters
+        ----------
+        pipeline : str
+            Pipeline string.
+
+        Returns
+        -------
+        dict
+            Stepwise parameter dictionary.
+        """
         print(f'Enter parameters for every or some of steps in {pipeline} >')
         models = pipeline.lower().split('+')
         params = {}
@@ -379,7 +470,20 @@ class PipelineUI:
         return params
     
     @staticmethod
-    def get_clustering_params(model):
+    def get_clustering_params(model: str) -> Dict[str, Any]:
+        """
+        Prompts user for clustering parameters.
+
+        Parameters
+        ----------
+        model : str
+            Model name.
+
+        Returns
+        -------
+        dict
+            Clustering parameters.
+        """
         print(f'Enter parameters model {model} >')
 
         params = InputManager.input_dict(f'Enter parameters for {model} (as key=value) > ')
@@ -387,20 +491,35 @@ class PipelineUI:
         return params
     
     @staticmethod
-    def clustering_setup(features, data, default_filename, results_dir):
-        message = 'To cluster data, enter a model name. \n' + \
+    def clustering_setup(features: ResNetFeatures, data: pd.DataFrame, 
+                         default_filename: str, results_dir: str) -> None:
+        """
+        Guides user through clustering setup and runs clustering.
+
+        Parameters
+        ----------
+        features : ResNetFeatures
+            Original features.
+        data : pd.DataFrame
+            Processed feature matrix.
+        default_filename : str
+            Output file base name.
+        results_dir : str
+            Directory for result output.
+        """
+        message = 'To cluster the data, enter a model name. \n' + \
         'Available models: \n' + \
         'hdbscan.HDBSCAN - use "hdbscan" \n' + \
         'sklearn.cluster.DBSCAN - use "dbscan" \n' + \
         'sklearn.cluster.KMeans - use "kmeans" \n' + \
-        'You will be able to set parameters for any of these funcs (enter "params") \n' + \
+        'You can specify parameters for any of these models (enter "params") \n' + \
         'or use default parameters: \n' + \
         'default parameters: \n' + \
         f'{Clustering(data, results_dir).default_params}.'
         print(message)
 
         while True:
-            model = InputManager.input_wrapper('Enter a clustering model: ').strip()
+            model = InputManager.input_wrapper('Enter a model name for clustering: ').strip()
             logger.info(f'Model: {model}')
             if model == 'break':
                 break
@@ -414,7 +533,22 @@ class PipelineUI:
             PipelineUI.to_deal_with_results_clustering(clusters, features, model, default_filename, '_clustering')
 
     @staticmethod
-    def preprocessing_setup(features, default_filename):
+    def preprocessing_setup(features: ResNetFeatures, default_filename: str) -> Optional[pd.DataFrame]:
+        """
+        Guides user through pipeline setup and runs preprocessing.
+
+        Parameters
+        ----------
+        features : ResNetFeatures
+            Original feature data.
+        default_filename : str
+            File name base for saving.
+
+        Returns
+        -------
+        pd.DataFrame
+            Processed feature data.
+        """
         message = 'To preprocess, enter a pipeline in the form \n' + \
         '"pca+umapnd+<...>". \n' + \
         'You can choose any (reasonable) combinations of \n' + \
@@ -422,7 +556,7 @@ class PipelineUI:
         'sklearn.StandartScalar() - use "scalar" \n' + \
         'sklearn.PCA() - use "pca" \n' + \
         'umap.UMAP() - use "umapnd" (it compreses to 20D default). \n' + \
-        'You will be able to set parameters for any of these funcs (enter "params") \n' + \
+        'You can specify parameters for any of these functions (enter "params") \n' + \
         'or use default parameters: \n' + \
         'default parameters: \n' + \
         f'{FeaturesPreprocessing(features).default_params}.'
@@ -444,38 +578,68 @@ class PipelineUI:
         return processed
     
     @staticmethod
-    def to_deal_with_results_features(pipeline, processed, default_filename, suf):
+    def to_deal_with_results_features(pipeline: str, processed: pd.DataFrame, default_filename: str, suf: str) -> None:
+        """
+        Provides user options for processed feature output: save, visualize.
+
+        Parameters
+        ----------
+        pipeline : str
+            Pipeline string.
+        processed : pd.DataFrame
+            Resulting data.
+        default_filename : str
+            Output file base.
+        suf : str
+            Suffix to append to filename.
+        """
 
         while True:
             choice = InputManager.input_wrapper('Enter "save", "print", "break" > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == 'save':
                 df = InputManager.check_if_database(processed)
-                message = f'Enter a file name to save data (or press "Enter" to use default_name: {default_filename}) > '
+                message = f'Enter a file name to save the data (or press "Enter" to use default_name: {default_filename}) > '
                 PathManager.saving_database(df, default_filename, message, suf=suf)
             elif choice == 'print':
                 ProcessingSteps.evaluation_preprocessing_results(processed, pipeline)
             elif choice == 'break':
                 break
             else:
-                print('Invalid input. \n Try again!')
+                print('Invalid input. \n Try again! > ')
                 logger.debug('Invalid input.')
 
 
     @staticmethod
-    def to_deal_with_results_clustering(clusters, source_features, model_type, default_filename, suf):
+    def to_deal_with_results_clustering(clusters: 'Clustering', source_features: 'ResNetFeatures', model_type: str, default_filename: str, suf: str) -> None:
+        """
+        Provides user options for clustering result output.
+
+        Parameters
+        ----------
+        clusters : Clustering
+            Resulting clustering.
+        source_features : ResNetFeatures
+            Original features.
+        model_type : str
+            Model used.
+        default_filename : str
+            Output base name.
+        suf : str
+            Suffix for filename.
+        """
         while True:
             choice = InputManager.input_wrapper('Enter "save", "print", "break" > ').strip()
             logger.info(f'Choice: {choice}')
             if choice == 'save':
                 df = InputManager.check_if_database(clusters)
-                message = f'Enter a file name to save data (or press "Enter" to use default_name: {default_filename}) > '
+                message = f'Enter a file name to save the data (or press "Enter" to use default_name: {default_filename}) > '
                 PathManager.saving_database(df, default_filename, message, suf=suf)
             elif choice == 'print':
                 ProcessingSteps.evaluation_clustering_results(clusters, source_features, model_type)
             elif choice == 'break':
                 break
             else:
-                print('Invalid input. \n Try again!')
+                print('Invalid input. \n Try again! > ')
                 logger.debug('Invalid input.')
 
