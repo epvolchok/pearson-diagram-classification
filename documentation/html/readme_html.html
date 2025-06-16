@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Readme_html</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 5em; }
+        img { max-width: 50%; }
+        pre code { background-color: #f5f5f5; padding: 0.5em; display: block; overflow-x: auto; }
+    </style>
+</head>
+<body>
+<h1>Classification of Statistical Pearson diagrams</h1>
+<p>(⚠ This project is under active development)</p>
+<h2>About</h2>
+<p>This project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see <em>V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini</em> 
+<em>Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind</em>, accepted to <strong>A&amp;A Letters</strong>. The results, including those obtained with the help of this project, are planned to be published in the journal <strong>Journal of Geophysical Research: Machine Learning and Computation</strong>.</p>
+<h2>Features of the Project</h2>
+<p>For an example of typical Pearson charts that need to be classified, see below and in the folder <code>./images/images_regular_data/</code>.</p>
+<p align="center">
+<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width="80%" />
+</p>
+
+<p>The problem: a set of &gt; 2 thousand statistical diagrams images must be clustered and analyzed. No labeled training data is available.</p>
+<p>Image processing:
+1. Feature extraction from an image by pretrained CNN <a href="https://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html">ResNet50</a>, without classification head;
+2. Filtering of low-informative features;
+3. Smooth reduction of feature space dimension: PCA + UMAP;
+4. Clustering and sorting images by HDBSCAN;</p>
+<p align="center">
+<img src="figures/processing.png" width="80%" />
+</p>
+
+<p>The project implements the ability to manually construct a pipeline based on any (reasonable) combination of standardization methods (StandardScaler, Normalizer - sci-kit learn library) and dimension reduction methods (UMAP, PCA). Parameters can be adjusted.</p>
+<p>For comparison, clustering methods like DBSCAN and KMeans are also supported with the ability to set parameters.</p>
+<p>To evaluate unsupervised clustering, Silhouette score and Davies Bouldin score are used.</p>
+<p>To evaluate cluster stability, Adjusted Rand score is used.</p>
+<p>Cluster labels are stored in a resulted DataFrame along with image paths.</p>
+<p><strong>What This Project Demonstrates</strong></p>
+<ul>
+<li>Modular project design for ML pipelines</li>
+<li>Deep feature extraction from images</li>
+<li>Unsupervised learning (clustering without labels)</li>
+<li>Data processing and pipeline construction</li>
+<li>Logging, visualization, and result organization</li>
+</ul>
+<h2>Results</h2>
+<p>The example of clustered data obtained by a standard algorithm: ResNet without a last layer + PCA(with 0.95 dispersion threshold) + UMAP 2D + HDBSCAN, -  is below.</p>
+<p align="center">
+<img src="figures/clusterization.png" width="80%" />
+</p>
+
+<p>Histograms for clusters in the dependence on parameters of measurements:</p>
+<p align="center">
+<img src="figures/histograms.png" width="80%" />
+</p>
+
+<h2>Structure</h2>
+<h3>Contents</h3>
+<p>The main part of the project responsible for data processing is packaged in the <code>mclustering</code> module. An example of using the module is given in <code>main.py</code>. The <code>manalyse</code> module is used to visualize the results, an example of using <code>main_plot.py</code>.</p>
+<p>The <code>minteractive</code> module implements interactive (from the console) launch of processing, guiding through the entire process, with the ability to select a specific pipeline. An example of use is presented in <code>main_interactive.py</code>, (is in progress)</p>
+<div class="codehilite"><pre><span></span><code>project
+├── main.py # basic pipeline
+├── main_interactive.py # interactive processing
+├── main_plot.py # visualization
+├── README.md
+├── LICENSE
+├── mlustering # the main module for proccessing
+|   ├── __init__.py
+|   ├── libfeatures.py # feature extraction
+|   ├── libprepocessing.py # dimension reduction
+|   ├── libclustering.py # clustering, clusters visualization and evaluation
+|   ├── libservice.py # supplementary functions
+├── minteractive # interactive module
+|   ├── __init__.py
+|   ├── libintercative.py # supplementary functions for input/output
+|   ├──libprocesspipeline.py # automatical launch of the process
+├── manalyse
+|   ├── __init__.py
+|   ├── plot_funcs.py # functions for visualization
+</code></pre></div>
+
+<h3>Inputs</h3>
+<p><code>images</code> folder is for source images to be analysed. The source images are supposed to be placed in a separate subfolder with name starting with 'images_'. </p>
+<p><code>data</code> folder is supposed to contain a metadata-file describing the images.</p>
+<div class="codehilite"><pre><span></span><code><span class="err">├──</span><span class="w"> </span><span class="n">images</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="n">images</span>
+<span class="o">|</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">images_regular</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">metadata</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="n">description</span>
+</code></pre></div>
+
+<h3>Outputs</h3>
+<p>Results are supposed to be saved as
+- .pkl or .json file for a resulted database with labels - <code>results</code> folder
+- subdirectory in <code>processed</code> folder named as 'processed_{specification as for images folder}'; images are sorted in there in different subdirectories according their label: 'label_0', 'label_1, ... 'noise'
+- Visual data .pdf/.png should be saved in <code>figures</code> folder.</p>
+<div class="codehilite"><pre><span></span><code><span class="err">├──</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="p">.</span><span class="n">pkl</span><span class="o">/</span><span class="p">.</span><span class="n">json</span><span class="w"> </span><span class="n">resulted</span><span class="w"> </span><span class="n">database</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">processed</span>
+<span class="o">|</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">processed_regular</span>
+<span class="o">|</span><span class="w">   </span><span class="o">|</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">label_0</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">sorted</span><span class="w"> </span><span class="n">images</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="mh">0</span>
+<span class="o">|</span><span class="w">   </span><span class="o">|</span><span class="w">   </span><span class="err">├──</span><span class="w"> </span><span class="n">label_1</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">sorted</span><span class="w"> </span><span class="n">images</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="mh">1</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">figures</span><span class="w"> </span><span class="p">#</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">visual</span><span class="w"> </span><span class="n">results</span>
+</code></pre></div>
+
+<h3>Other</h3>
+<p><code>documentation</code> folder is for .html/.pdf documentation. The documentation is generated semi-automatically with <a href="https://pdoc.dev/">Pdoc</a>.</p>
+<p><code>logs</code> -  full logs per run.</p>
+<h2>Dependencies</h2>
+<ul>
+<li>Python 3.8+</li>
+<li><a href="https://pytorch.org/get-started/locally/">torch, torchvision</a></li>
+<li><a href="https://scikit-learn.org/stable/install.html#installation-instructions">sklearn</a></li>
+<li><a href="https://umap-learn.readthedocs.io/en/latest/">umap</a></li>
+<li><a href="https://pypi.org/project/hdbscan/">hdbscan</a></li>
+<li>pandas, numpy</li>
+<li>tqdm (progress bar)</li>
+<li>matplotlib, seaborn</li>
+<li>logging</li>
+<li>typing (signatures)</li>
+<li>shutil (copying files)</li>
+</ul>
+</body>
+</html>
