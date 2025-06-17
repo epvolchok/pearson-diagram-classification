@@ -60,7 +60,7 @@ class InputManager:
         """
 
         message = 'Welcome to the script! \n' + \
-        'First place your images in a separate folder (into "./images/") named according to the template: \n \
+        'First, put your images in a separate folder (in "./images/") named according to the pattern: \n \
         "images_(your_specification)"'
         print(message)
         logger.info('Script started')
@@ -120,14 +120,14 @@ class InputManager:
         logger.info(f'Filter mixed frequencies: {filter_mixed}')
         if filter_mixed:
             print(f'Check the name pattern: {name_pattern}')
-            np_input = InputManager.input_wrapper('Change if it is needed or press "Enter": ').strip()
+            np_input = InputManager.input_wrapper('Change if it is needed or press "Enter" > ').strip()
             if np_input:
                 name_pattern = np_input
         logger.info(f'Name pattern: {name_pattern}')
         return filter_mixed, name_pattern
     
     @staticmethod
-    def input_dict(prompt: str = 'Enter pairs of key=value (empty string - end): ') -> dict:
+    def input_dict(prompt: str = 'Enter pairs of key=value (empty string - end) > ') -> dict:
         """
         Interactively builds a dictionary from user input of key=value pairs.
 
@@ -275,13 +275,13 @@ class PathManager:
             Valid image folder name.
         """
         cwd = os.getcwd()
-        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
+        input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images > '))
         isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
 
         while not isdir:
             print(f'Wrong folder name: {input_imags}. Try again.')
             logger.debug(f'Wrong folder name: {input_imags}')
-            input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images: '))
+            input_imags = os.path.basename(InputManager.input_wrapper('Please enter the name of directory with images > '))
             isdir = os.path.isdir(os.path.join(cwd, 'images', input_imags))
 
         return input_imags
@@ -309,7 +309,7 @@ class PathManager:
         default_filename = os.path.join(cwd, 'results', 'pearson_diagram_data_'+specification)
         logger.info(f'Source images: {input_imags} Results: {results_dir, default_filename}')
 
-        clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) ')
+        clear = InputManager.get_bool(f'If folder {results_dir} already exists would you like to clear its contents? (True or False) > ')
         ServiceFuncs.preparing_folder(results_dir, clear=clear)
         logger.info(f'Clearing results folder: {clear}')
         return default_filename, results_dir
@@ -356,7 +356,7 @@ class PathManager:
         """
         logger.info(f'Saving database')
         file_to_write = InputManager.input_wrapper(message)
-        suffix = InputManager.input_wrapper('or/and enter a suffix to the filename: ') or suf
+        suffix = InputManager.input_wrapper('or/and enter a suffix to the filename > ') or suf
         file_to_write = ServiceFuncs.create_name(default_filename, file_to_write=file_to_write, suffix=suffix)
         DBFuncs.save_database(df, file_to_write=file_to_write)
 

@@ -1,15 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-    <meta charset="UTF-8">
-    <title>Readme_html</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 10em; }
-        img { max-width: 50%; }
-        pre code { background-color: #f5f5f5; padding: 0.5em; display: block; overflow-x: auto; }
-    </style>
+    <meta charset='UTF-8'>
+    <title>Project Documentation</title>
+    
+<style>
+    body {
+      font-family: sans-serif;
+      font-size: 18px;
+      margin: 2em;
+      background: #fdfdfd;
+    }
+    section {
+      margin-bottom: 2em;
+    }
+    a:link, a:visited {
+    color: #0066cc;
+    text-decoration: none;
+  }
+
+  @media print {
+    a:link, a:visited {
+      color: #000000;  /* или другой цвет, например тёмно-синий */
+      text-decoration: none;
+    }
+  }
+  </style>
+
 </head>
 <body>
+<h1>Project Documentation</h1>
+
+<section>
 <h1>Classification of Statistical Pearson diagrams</h1>
 <p>(⚠ This project is under active development)</p>
 <h2>About</h2>
@@ -26,7 +48,7 @@
 <h2>Features of the Project</h2>
 <p>For an example of typical Pearson charts that need to be classified, see below and in the folder <code>./images/images_regular_data/</code>.</p>
 <p align="center">
-<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width="60%" />
+<img src="html/figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width="60%" />
 </p>
 
 <p><strong>The problem</strong>: a set of more than 2 thousand statistical diagram images must be classified and analysed. No labeled training data is available.</p>
@@ -36,7 +58,7 @@
 3. Smooth reduction of features space dimension: PCA + UMAP;
 4. Clustering and sorting images by HDBSCAN;</p>
 <p align="center">
-<img src="figures/processing.png" width="60%" />
+<img src="html/figures/processing.png" width="60%" />
 </p>
 
 <p>The project implements the ability to manually construct a pipeline based on any (reasonable) combination of standardization methods (StandardScaler, Normalizer - sci-kit learn library) and dimension reduction methods (UMAP, PCA). 
@@ -45,19 +67,19 @@ To evaluate unsupervised clustering, Silhouette score and Davies Bouldin score a
 To evaluate cluster stability, Adjusted Rand score is used.</p>
 <p>The interactive mode (run <code>main_interactive.py</code>) allows you to select a combination of models and their parameters "on the fly".</p>
 <p align="center">
-<img src="figures/example.png" width="60%" />
+<img src="html/figures/example.png" width="60%" />
 </p>
 
 <p>Cluster labels are stored in a resulted DataFrame along with image paths.</p>
 <h2>Results</h2>
 <p>The example of clustered data obtained by a standard algorithm: ResNet without a last layer + PCA(with 0.95 dispersion threshold) + UMAP 2D + HDBSCAN, -  is below.</p>
 <p align="center">
-<img src="figures/clusterization.png" width="60%" />
+<img src="html/figures/clusterization.png" width="60%" />
 </p>
 
 <p>Histograms for clusters in the dependence on parameters of measurements:</p>
 <p align="center">
-<img src="figures/histograms.png" width="60%" />
+<img src="html/figures/histograms.png" width="60%" />
 </p>
 
 <h2>Structure</h2>
@@ -123,5 +145,6 @@ To evaluate cluster stability, Adjusted Rand score is used.</p>
 <li>typing (signatures)</li>
 <li>shutil (copying files)</li>
 </ul>
-</body>
+</section>
+<h1>Index</h1><ul>  <li><a href="html/mclustering/libfeatures.html">Clustering module: features extraction</a></li>  <li><a href="html/mclustering/libpreprocessing.html">Clustering module: preprocessing</a></li>  <li><a href="html/mclustering/libclustering.html">Clustering module: clustering</a></li>  <li><a href="html/mclustering/libservice.html">Clustering module: service functions</a></li>  <li><a href="html/minteractive/libinteractive.html">Interactive module: service functions</a></li>  <li><a href="html/minteractive/libprocesspipeline.html">Interactive module: pipeline</a></li>  <li><a href="html/manalyse/plot_funcs.html">Visualization</a></li></ul></body>
 </html>

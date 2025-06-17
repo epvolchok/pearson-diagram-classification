@@ -4,38 +4,8 @@
 
 ## About
 
-This project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see *V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini* 
+The project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see *V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini* 
 *Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. The results, including those obtained with the help of this project, are planned to be published in the journal **Journal of Geophysical Research: Machine Learning and Computation**.
-
-## Features of the Project
-
-For an example of typical Pearson charts that need to be classified, see below and in the folder `./images/images_regular_data/`.
-
-<p align="center">
-<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width=800 />
-</p>
-
-The problem: a set of > 2 thousand statistical diagrams images must be clustered and analyzed. No labeled training data is available.
-
-Image processing:
-1. Feature extraction from an image by pretrained CNN [ResNet50](https://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html), without classification head;
-2. Filtering of low-informative features;
-3. Smooth reduction of feature space dimension: PCA + UMAP;
-4. Clustering and sorting images by HDBSCAN;
-
-<p align="center">
-<img src="figures/processing.png" width=800 />
-</p>
-
-The project implements the ability to manually construct a pipeline based on any (reasonable) combination of standardization methods (StandardScaler, Normalizer - sci-kit learn library) and dimension reduction methods (UMAP, PCA). Parameters can be adjusted.
-
-For comparison, clustering methods like DBSCAN and KMeans are also supported with the ability to set parameters.
-
-To evaluate unsupervised clustering, Silhouette score and Davies Bouldin score are used.
-
-To evaluate cluster stability, Adjusted Rand score is used.
-
-Cluster labels are stored in a resulted DataFrame along with image paths.
 
 **What This Project Demonstrates**
 
@@ -45,18 +15,51 @@ Cluster labels are stored in a resulted DataFrame along with image paths.
 - Data processing and pipeline construction
 - Logging, visualization, and result organization
 
+## Features of the Project
+
+For an example of typical Pearson charts that need to be classified, see below and in the folder `./images/images_regular_data/`.
+
+<p align="center">
+<img src="figures/solo_L2_rpw-tds-surv-rswf-e_20200619_V05.png" width="60%" />
+</p>
+
+**The problem**: a set of more than 2 thousand statistical diagram images must be classified and analysed. No labeled training data is available.
+
+Image processing:
+1. Features extraction from an image by pretrained CNN [ResNet50](https://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html), without classification head;
+2. Filtering of low-informative features;
+3. Smooth reduction of features space dimension: PCA + UMAP;
+4. Clustering and sorting images by HDBSCAN;
+
+<p align="center">
+<img src="figures/processing.png" width="60%" />
+</p>
+
+The project implements the ability to manually construct a pipeline based on any (reasonable) combination of standardization methods (StandardScaler, Normalizer - sci-kit learn library) and dimension reduction methods (UMAP, PCA). 
+For comparison, clustering methods like DBSCAN and KMeans are also supported.
+To evaluate unsupervised clustering, Silhouette score and Davies Bouldin score are used.
+To evaluate cluster stability, Adjusted Rand score is used.
+
+The interactive mode (run `main_interactive.py`) allows you to select a combination of models and their parameters "on the fly".
+
+<p align="center">
+<img src="figures/example.png" width="60%" />
+</p>
+
+Cluster labels are stored in a resulted DataFrame along with image paths.
+
 ## Results
 
 The example of clustered data obtained by a standard algorithm: ResNet without a last layer + PCA(with 0.95 dispersion threshold) + UMAP 2D + HDBSCAN, -  is below.
 
 <p align="center">
-<img src="figures/clusterization.png" width=800 />
+<img src="figures/clusterization.png" width="60%" />
 </p>
 
 Histograms for clusters in the dependence on parameters of measurements:
 
 <p align="center">
-<img src="figures/histograms.png" width=800 />
+<img src="figures/histograms.png" width="60%" />
 </p>
 
 ## Structure
@@ -99,6 +102,7 @@ project
 ├── data # for metadata, data description
 
 ```
+
 ### Outputs
 Results are supposed to be saved as
 - .pkl or .json file for a resulted database with labels - `results` folder
@@ -117,7 +121,7 @@ Results are supposed to be saved as
 
 `documentation` folder is for .html/.pdf documentation. The documentation is generated semi-automatically with [Pdoc](https://pdoc.dev/).
 
-`logs` -  full logs per run.
+`logs` - a folder for full logs per run.
 
 ## Dependencies 
 
