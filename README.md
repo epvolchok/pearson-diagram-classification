@@ -5,15 +5,7 @@
 ## About
 
 The project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see *V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini* 
-*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. The results, including those obtained with the help of this project, are planned to be published in the journal **Journal of Geophysical Research: Machine Learning and Computation**.
-
-**What This Project Demonstrates**
-
-- Modular project design for ML pipelines
-- Deep feature extraction from images
-- Unsupervised learning (clustering without labels)
-- Data processing and pipeline construction
-- Logging, visualization, and result organization
+*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. 
 
 ## Features of the Project
 
