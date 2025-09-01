@@ -1,6 +1,5 @@
 # Classification of Statistical Pearson diagrams
 
-(⚠ This project is under active development)
 
 ## About
 
