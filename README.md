@@ -3,8 +3,9 @@
 
 ## About
 
-The project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see *V.Annenkov, C.Krafft, A.Volokitin, and P.Savoini* 
-*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **A&A Letters**. 
+The project is designed for automatic classification of statistical diagrams obtained from plasma turbulence measurement data by Solar Orbiter (RPW-TDS instruments). For details on the physical formulation of the problem, obtaining and analyzing diagrams, see 
+[*Statistical properties of beam-driven upper-hybrid wave turbulence in the solar wind*, accepted to **V. Annenkov, C. Krafft, A. Volokitin and P. Savoini A&A, 699 (2025)**](https://doi.org/10.1051/0004-6361/202555087). 
+
 
 ## Features of the Project
 
@@ -127,3 +128,7 @@ Results are supposed to be saved as
 - logging
 - typing (signatures)
 - shutil (copying files)
+
+## Cite this
+
+Volchok, E. (2026). epvolchok/pearson-diagram-classification: v1.0 (v1.0). Zenodo. https://doi.org/10.5281/zenodo.20176405
