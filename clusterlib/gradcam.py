@@ -10,6 +10,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import pairwise_distances
 
+import torch
+import torch.nn.functional as F
+import torch.nn as nn
+from torchvision import models
+from PIL import Image
+from torchvision import transforms
+import cv2
 
 
 def find_medoids(df_features) -> dict:
@@ -79,8 +86,6 @@ def build_resnet_backbone():
     The backbone outputs a (1, 2048, 7, 7) feature map suitable for Grad-CAM.
     Requires torchvision.
     """
-    import torch.nn as nn
-    from torchvision import models
 
     resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
     resnet.eval()
@@ -129,8 +134,6 @@ def compute_score(feature_map, medoid_vector):
     -------
     score : torch.Tensor scalar
     """
-    import torch
-    import torch.nn.functional as F
 
     pooled = feature_map.squeeze(-1).squeeze(-1)
     medoid_tensor = torch.tensor(medoid_vector, dtype=torch.float32).unsqueeze(0)
@@ -155,7 +158,6 @@ def compute_gradcam(
     -------
     cam : np.ndarray of shape (7, 7), values in [0, 1]
     """
-    import torch.nn.functional as F
 
     gradcam_obj.model.zero_grad()
     feature_map = gradcam_obj.model(image_tensor)
@@ -180,8 +182,6 @@ def load_image(path: str):
     img : PIL.Image (original, resized to 224x224 for display)
     tensor : torch.Tensor of shape (1, 3, 224, 224) with requires_grad=True
     """
-    from PIL import Image
-    from torchvision import transforms
 
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -207,8 +207,6 @@ def overlay_cam(original_image, cam: np.ndarray) -> np.ndarray:
     -------
     overlay : np.ndarray of shape (224, 224, 3), uint8
     """
-    import cv2
-
     img_np = np.array(original_image.resize((224, 224)))
     cam_resized = cv2.resize(cam, (224, 224))
     heatmap = cv2.applyColorMap(np.uint8(255 * cam_resized), cv2.COLORMAP_JET)

@@ -1,30 +1,16 @@
-"""
-Plotting utilities for clustering results and stability maps.
+#Copyright (c) 2026 Evgeniia VOLCHOK
+#for contacts e.p.volchok@gmail.com
 
-Unification notes
------------------
-* ``interpolation2`` in bootstrap.py had signature
-  ``(stability, ax, fig, X2D, title, count=True)``, while in
-  grid_search_stability.py it was ``(stability, ax, X2D, title, count=True)``
-  and referenced a module-level ``fig`` variable — a latent bug.  The unified
-  :func:`plot_stability_contour` always requires ``fig`` explicitly.
-* ``kernel_field`` was identical in both files — deduplicated here.
-* ``interpolation`` (RBF-based) was also identical — kept as
-  :func:`plot_stability_rbf`.
-* Hard-coded axis limits present in some original functions
-  (``xlim(-5.7, 12), ylim(-2.3, 13.6)``) are removed; callers set their own
-  limits.
-"""
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#http://www.apache.org/licenses/LICENSE-2.0
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RBFInterpolator
 from scipy.spatial import cKDTree
 
-
-# ---------------------------------------------------------------------------
-# Kernel smoothing (shared backend)
-# ---------------------------------------------------------------------------
 
 def kernel_field(
     values: np.ndarray,
@@ -75,9 +61,6 @@ def kernel_field(
     return Xi, Yi, Z.reshape(Xi.shape), W.reshape(Xi.shape)
 
 
-# ---------------------------------------------------------------------------
-# Stability field visualisations
-# ---------------------------------------------------------------------------
 
 def plot_stability_contour(
     stability: np.ndarray,
@@ -137,7 +120,7 @@ def plot_stability_rbf(
 ) -> None:
     """RBF-interpolated stability overlay with filled contours.
 
-    Cells farther than *proximity_threshold* from any data point are masked so
+    Cells farther than proximity_threshold from any data point are masked so
     the contour does not bleed into empty regions.
 
     Parameters
@@ -184,9 +167,6 @@ def plot_stability_rbf(
     cbar.set_ticklabels([str(l) for l in levels])
 
 
-# ---------------------------------------------------------------------------
-# Bootstrap / stability report plots
-# ---------------------------------------------------------------------------
 
 def plot_ari_boxplot(boot: dict, ax=None, show_points: bool = True):
     """Boxplots of ARI and coverage from bootstrap / seed stability results.
@@ -197,8 +177,8 @@ def plot_ari_boxplot(boot: dict, ax=None, show_points: bool = True):
     Parameters
     ----------
     boot : dict
-        Output of :func:`~clusterlib.stability.bootstrap_stability` or
-        :func:`~clusterlib.stability.seed_stability`.
+        Output of :func:~clusterlib.stability.bootstrap_stability or
+        :func:~clusterlib.stability.seed_stability.
     show_points : bool
         If True, scatter individual run values over the boxes.
 
@@ -254,7 +234,7 @@ def plot_preservation_overlay(
 ):
     """Scatter per-point preservation values on a 2-D embedding.
 
-    Points that were never sampled (NaN) are shown in *nan_color*.
+    Points that were never sampled (NaN) are shown in nan_color.
 
     Returns
     -------
@@ -290,8 +270,8 @@ def plot_stability_report(
     Parameters
     ----------
     boot : dict
-        Output of :func:`~clusterlib.stability.bootstrap_stability` or
-        :func:`~clusterlib.stability.seed_stability`.
+        Output of :func:~clusterlib.stability.bootstrap_stability or
+        :func:~clusterlib.stability.seed_stability.
     emb2d : array of shape (n_samples, 2)
         2-D embedding for the contour map.
     figsize : tuple
@@ -309,9 +289,7 @@ def plot_stability_report(
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Cluster scatter plot
-# ---------------------------------------------------------------------------
+
 
 def plot_clusters(
     ax,

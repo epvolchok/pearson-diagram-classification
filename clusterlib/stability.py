@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import adjusted_rand_score
+from collections import Counter
+import umap as _umap
+import hdbscan as _hdbscan
 
 from .clustering import run_pipeline, get_labels
 
@@ -467,9 +470,7 @@ def per_point_stability(X, n_runs: int = 30, umap_params: dict | None = None,
 
     Uses fixed default UMAP / HDBSCAN parameters if none are provided.
     """
-    from collections import Counter
-    import umap as _umap
-    import hdbscan as _hdbscan
+
 
     if umap_params is None:
         umap_params = {'n_components': 15, 'min_dist': 0.1, 'n_neighbors': 30,
@@ -500,8 +501,7 @@ def per_point_stability_knn(X, umap_params: dict, hdbscan_params: dict,
     """kNN co-occurrence stability: fraction of runs where a point and each of
     its k feature-space neighbours land in the same cluster.
     """
-    import umap as _umap
-    import hdbscan as _hdbscan
+
 
     n = len(X)
     nbrs = NearestNeighbors(n_neighbors=k).fit(X)
@@ -539,8 +539,7 @@ def per_point_stability_fast(X, umap_params: dict, hdbscan_params: dict,
     inner loop.  Returns (stability, co_rate) where co_rate is the full
     (n x n) co-occurrence rate matrix.
     """
-    import umap as _umap
-    import hdbscan as _hdbscan
+
 
     n = len(X)
     cooccurrence  = np.zeros((n, n))
@@ -571,8 +570,7 @@ def point_stability(X, umap_params: dict, hdbscan_params: dict,
     Equivalent to :func:`per_point_stability_fast` but uses explicit loops —
     useful as a reference implementation.
     """
-    import umap as _umap
-    import hdbscan as _hdbscan
+
 
     n = len(X)
     cooccurrence  = np.zeros((n, n))
