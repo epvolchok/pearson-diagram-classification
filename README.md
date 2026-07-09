@@ -76,7 +76,12 @@ Pipeline there is
 both rendered with kernel-smoothed interpolation (interpolation2 style).
 
 Below are the examples.
-
+<p align="center">
+<img src="figures/stability_k15.png" width="60%" />
+</p>
+<p align="center">
+<img src="figures/stability_report3.png" width="60%" />
+</p>
 
 
 ## Structure
@@ -169,4 +174,4 @@ Results are supposed to be saved as
 
 ## Cite this
 
-Volchok, E. (2026). epvolchok/pearson-diagram-classification: v1.0 (v1.0). Zenodo. https://doi.org/10.5281/zenodo.20176405
+Volchok, E. (2026). epvolchok/pearson-diagram-classification: v1.0 (v1.0). Zenodo. https://doi.org/10.5281/zenodo.20175826
