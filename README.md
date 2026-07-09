@@ -54,6 +54,31 @@ Histograms for clusters in the dependence on parameters of measurements:
 <img src="figures/histograms.png" width="60%" />
 </p>
 
+## Stability and grid search
+
+To assess the (local) stability of a clustering, for each point we compute the fraction (exact when comparing two runs, or averaged over many runs) of its k nearest neighbors
+that remain in the same cluster as the point itself. We refer to this measure as neighborhood preservation, or intra-cluster stability. To assess the global stability of clustering between two runs,
+we use the adjusted Rand index (ARI; Hubert & Arabie; 1985), which quantifies the agreement between two partitions based on the proportion of point pairs assigned consistently (either to the
+same cluster or to different clusters) in both. Corrected for the agreement expected by chance, it yields a value of 1 for a perfect match and 0 for agreement at the level of random labeling.
+
+Functions for stability, ARI and grid search are in clusterlib. The example of use is in `main_stability.py`. 
+Pipeline there is
+- Load raw features from a pickle file.
+- Drop doubled events listed in a text file.
+- Variance filter -> remove near-constant features.
+- Correlation filter -> remove redundant features.
+- PCA -> reduce to 95 % explained variance.
+- Reference clustering (fixed params from hdbscan_tests.py).
+- Grid stability sweep (wide UMAP x HDBSCAN grid, k = 15).
+- Save / load results (.npz via clusterlib.io).
+- 2D UMAP embedding for visualisation.
+- Two-panel figure: neighbourhood preservation + agreement with reference,
+both rendered with kernel-smoothed interpolation (interpolation2 style).
+
+Below are the examples.
+
+
+
 ## Structure
 ### Contents
 
@@ -63,24 +88,35 @@ The `minteractive` module implements interactive (from the console) launch of pr
 
 ```
 project
-├── main.py # basic pipeline
-├── main_interactive.py # interactive processing
-├── main_plot.py # visualization
+├── main.py # Basic pipeline
+├── main_interactive.py # Interactive processing
+├── main_plot.py # Visualization
+├── main_stability # Stability study
 ├── README.md
 ├── LICENSE
-├── mlustering # the main module for proccessing
+├── mlustering # The main module for proccessing
 |   ├── __init__.py
-|   ├── libfeatures.py # feature extraction
-|   ├── libprepocessing.py # dimension reduction
-|   ├── libclustering.py # clustering, clusters visualization and evaluation
-|   ├── libservice.py # supplementary functions
-├── minteractive # interactive module
+|   ├── libfeatures.py # Feature extraction
+|   ├── libprepocessing.py # Dimension reduction by PCA and UMAP
+|   ├── libclustering.py # Clustering, clusters visualization and evaluation
+|   ├── libservice.py # Supplementary functions
+├── minteractive # Interactive module
 |   ├── __init__.py
-|   ├── libintercative.py # supplementary functions for input/output
-|   ├──libprocesspipeline.py # automatical launch of the process
+|   ├── libintercative.py # Supplementary functions for input/output
+|   ├──libprocesspipeline.py # Automatical launch of the process
 ├── manalyse
 |   ├── __init__.py
-|   ├── plot_funcs.py # functions for visualization
+|   ├── plot_funcs.py # Functions for visualization
+├── clusterlib
+|   ├── __init__.py
+|   ├── clustering.py # UMAP+HDBSCAN pipeline, parameter utilities, HDBSCAN diagnostics
+|   ├── gradcam.py # Grad-CAM visualisation for cluster medoids (requires torch + cv2)
+|   ├── io.py # Save/load .npz for stability, bootstrap, grid search results
+|   ├── metrics.py # Embedding quality: space preservation, MST metrics, TDA
+|   ├── pareto.py # Pareto front computation and CSV/Parquet I/O
+|   ├── preprocessing.py # Feature selection: variance filter, correlation removal
+|   ├── stability.py # Stability metrics: ARI, neighbourhood preservation, bootstrap, seed
+|   ├── visualization.py # Plots: stability contour maps, ARI boxplots, cluster scatter
 ```
 ### Inputs
 
@@ -128,6 +164,8 @@ Results are supposed to be saved as
 - logging
 - typing (signatures)
 - shutil (copying files)
+- PIL
+- cv2 (gradcam)
 
 ## Cite this
 
